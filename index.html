@@ -95,6 +95,24 @@
             // --- 學生名單收放狀態 ---
             const [isStudentListCollapsed, setIsStudentListCollapsed] = useState(false);
 
+            // --- Google Sheets / GAS 狀態 ---
+            const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('gasUrl') || '');
+            const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || '');
+            const [sheetConnected, setSheetConnected] = useState(false);
+            const [isLoadingSheet, setIsLoadingSheet] = useState(false);
+            const [scoresLoaded, setScoresLoaded] = useState(false);
+            const [sheetLoadStatus, setSheetLoadStatus] = useState('');
+            const [parsedGenComments, setParsedGenComments] = useState({});
+            const [finalComments, setFinalComments] = useState({});
+            const [saveStatus, setSaveStatus] = useState({});
+
+            // --- 切換到成績頁籤時自動讀取 ---
+            useEffect(() => {
+                if (activeTab === 'scores' && gasUrl.trim() && sheetUrl.trim() && !scoresLoaded && !isLoadingSheet) {
+                    loadScoresFromSheet();
+                }
+            }, [activeTab]);
+
             // --- 資料處理：學生清單 ---
             useEffect(() => {
                 if (inputMode === 'list' && rawStudentData) {
@@ -202,6 +220,155 @@
                 });
                 return ranks;
             }, [scores, students]);
+
+            // --- GAS API 呼叫 ---
+            const callGAS = async (params) => {
+                const url = new URL(gasUrl.trim());
+                url.searchParams.set('sheetUrl', sheetUrl.trim());
+                Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+                const res = await fetch(url.toString(), { redirect: 'follow' });
+                const json = await res.json();
+                if (!json.ok) throw new Error(json.error || '未知錯誤');
+                return json.data;
+            };
+
+            const connectToSheet = async () => {
+                if (!gasUrl.trim()) { alert('請輸入 GAS 部署網址'); return; }
+                if (!sheetUrl.trim()) { alert('請輸入 Google Sheet 網址'); return; }
+                setIsLoadingSheet(true);
+                setSheetLoadStatus('');
+                try {
+                    const data = await callGAS({ action: 'getStudents' });
+                    if (!data || data.length === 0) throw new Error('工作表中無學生資料');
+                    setStudents(data);
+                    setSelectedStudentId(data[0].id);
+                    setSheetConnected(true);
+                    setSheetLoadStatus(`成功讀取 ${data.length} 位學生`);
+                    const comments = await callGAS({ action: 'getComments' });
+                    if (comments && Object.keys(comments).length > 0) {
+                        const parsed = {}, finals = {};
+                        Object.entries(comments).forEach(([id, d]) => {
+                            if (d && typeof d === 'object') {
+                                parsed[id] = { gen1: d.gen1 || '', gen2: d.gen2 || '', gen3: d.gen3 || '' };
+                                if (d.final) finals[id] = d.final;
+                            }
+                        });
+                        setParsedGenComments(prev => ({ ...prev, ...parsed }));
+                        setFinalComments(prev => ({ ...prev, ...finals }));
+                    }
+                } catch (err) {
+                    setSheetLoadStatus('連結失敗：' + err.message);
+                    setSheetConnected(false);
+                } finally {
+                    setIsLoadingSheet(false);
+                }
+            };
+
+            const loadScoresFromSheet = async () => {
+                if (!gasUrl.trim()) { alert('請先連結 Google Sheets'); return; }
+                setIsLoadingSheet(true);
+                setSheetLoadStatus('');
+                try {
+                    const data = await callGAS({ action: 'getScores' });
+                    setScores(data);
+                    setScoresLoaded(true);
+                    setSheetLoadStatus(`已讀取 ${Object.keys(data).length} 位學生的成績`);
+                } catch (err) {
+                    setScoresLoaded(false);
+                    setSheetLoadStatus('讀取失敗：' + err.message);
+                } finally {
+                    setIsLoadingSheet(false);
+                }
+            };
+
+            // --- 解析 Gemini 輸出成三則 ---
+            const parseThreeComments = (text) => {
+                if (!text) return ['', '', ''];
+                // 嘗試按中文序號分割（評語一/二/三 或 則一/二/三）
+                let parts = text.split(/\n?\s*(?:\*\*)?(?:評語|則)[一二三](?:：|:)?(?:\*\*)?\s*\n?/);
+                if (parts.length >= 4) return [parts[1]?.trim()||'', parts[2]?.trim()||'', parts[3]?.trim()||''];
+                // 嘗試阿拉伯數字分割
+                parts = text.split(/\n\s*[（(]?[1-3][）).、]\s*/);
+                if (parts.length >= 4) return [parts[1]?.trim()||'', parts[2]?.trim()||'', parts[3]?.trim()||''];
+                // 嘗試段落分割（兩個以上空行）
+                const paras = text.trim().split(/\n{2,}/).filter(p => p.trim());
+                if (paras.length >= 3) return [paras[0]?.trim()||'', paras[1]?.trim()||'', paras[2]?.trim()||''];
+                return [text.trim(), '', ''];
+            };
+
+            const saveCommentToSheet = async (studentId, rawComment) => {
+                if (!gasUrl.trim()) return;
+                const student = students.find(s => s.id === studentId);
+                if (!student) return;
+                const [gen1, gen2, gen3] = parseThreeComments(rawComment);
+                setParsedGenComments(prev => ({ ...prev, [studentId]: { gen1, gen2, gen3 } }));
+                try {
+                    await callGAS({
+                        action: 'saveComment',
+                        id: studentId,
+                        name: student.name,
+                        gen1: encodeURIComponent(gen1),
+                        gen2: encodeURIComponent(gen2),
+                        gen3: encodeURIComponent(gen3)
+                    });
+                    alert('3 則評語已儲存至 Google Sheets！');
+                } catch (err) {
+                    alert('儲存失敗：' + err.message);
+                }
+            };
+
+            const saveFinalCommentToSheet = async (studentId, comment) => {
+                if (!gasUrl.trim()) return;
+                setSaveStatus(prev => ({ ...prev, [studentId]: 'saving' }));
+                try {
+                    await callGAS({ action: 'saveFinalComment', id: studentId, comment: encodeURIComponent(comment) });
+                    setSaveStatus(prev => ({ ...prev, [studentId]: 'saved' }));
+                } catch (err) {
+                    setSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));
+                }
+            };
+
+            const handleFinalCommentChange = (studentId, value) => {
+                setFinalComments(prev => ({ ...prev, [studentId]: value }));
+                setSaveStatus(prev => ({ ...prev, [studentId]: 'pending' }));
+                const timerKey = `_saveTimer_${studentId}`;
+                if (window[timerKey]) clearTimeout(window[timerKey]);
+                window[timerKey] = setTimeout(() => saveFinalCommentToSheet(studentId, value), 1500);
+            };
+
+            const downloadTemplate = () => {
+                const bom = '﻿';
+                const csv = [
+                    '# 請依照以下格式在 Google Sheets 建立各工作表（名稱需完全吻合）',
+                    '',
+                    '# ===== 國語 工作表 =====',
+                    '座號,姓名,期中態度,期中國習,期中筆記,期中作業,期中聽寫,期中考卷,期中平時測驗,期中平時成績,期中月考成績,期中平均,期中排名,期末態度,期末國習,期末筆記,期末作業,期末聽寫,期末考卷,期末平時測驗,期末平時成績,期末月考成績,期末平均,期末排名',
+                    '1,範例學生,90,85,80,88,92,78,86,84,90,86,3,88,83,79,87,91,80,84,83,89,85,2',
+                    '',
+                    '# ===== 數學 工作表 =====',
+                    '座號,姓名,期中態度,期中數課平均,期中數習平均,期中作業,期中數重平均,期中考卷平均,期中紙筆測驗,期中平時成績,期中月考成績,期中平均,期中排名,期末態度,期末數課平均,期末數習平均,期末作業,期末數重平均,期末考卷平均,期末紙筆測驗,期末平時成績,期末月考成績,期末平均,期末排名',
+                    '1,範例學生,88,82,79,90,85,88,84,86,88,87,4,90,84,81,92,87,89,86,88,91,89,3',
+                    '',
+                    '# ===== 社會 工作表 =====',
+                    '座號,姓名,期中平時成績,期中月考成績,期末平時成績,期末月考成績',
+                    '1,範例學生,85,90,88,92',
+                    '',
+                    '# ===== 自然 工作表 =====',
+                    '座號,姓名,期中平時成績,期中月考成績,期末平時成績,期末月考成績',
+                    '1,範例學生,82,88,85,91',
+                    '',
+                    '# ===== 評語 工作表（由系統自動建立）=====',
+                    '座號,姓名,評語',
+                    '1,範例學生,（由系統自動填入）'
+                ].join('\n');
+                const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'GoogleSheet範本格式.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+            };
 
             const styleOptions = ["親切溫暖", "嚴謹專業", "幽默風趣", "簡潔俐落", "鼓勵讚賞", "偏重品德", "偏重學科", "建設性批評", "家長導向", "正向積極", "文青感",  "強調潛力", "具體細節"];
 
@@ -465,7 +632,8 @@ ${formatPeriod('final')}
                                     { id: 'style', icon: Palette, label: '風格設定' },
                                     { id: 'scores', icon: BarChart3, label: '成績匯入' },
                                     { id: 'traits', icon: UserCircle, label: '特質挑選' },
-                                    { id: 'prompt', icon: MessageSquare, label: '生成指令' }
+                                    { id: 'prompt', icon: MessageSquare, label: '生成指令' },
+                                    { id: 'review', icon: ClipboardCheck, label: '評語審閱' }
                                 ].map(tab => (
                                     <button
                                         key={tab.id}
@@ -487,17 +655,82 @@ ${formatPeriod('final')}
                             {activeTab === 'students' && (
                                 <div className="p-8 h-full flex flex-col animate-in fade-in">
                                     <h2 className="text-xl font-bold mb-6 border-l-4 border-indigo-500 pl-3">第一步：建立學生清單</h2>
-                                    <div className="flex gap-4 mb-6">
+                                    <div className="flex gap-4 mb-6 flex-wrap">
                                         <button onClick={() => setInputMode('count')} className={`px-6 py-2 rounded-full border-2 transition-all ${inputMode === 'count' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold' : 'border-slate-200'}`}>人數輸入</button>
                                         <button onClick={() => setInputMode('list')} className={`px-6 py-2 rounded-full border-2 transition-all ${inputMode === 'list' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold' : 'border-slate-200'}`}>清單貼上</button>
+                                        <button onClick={() => setInputMode('sheet')} className={`px-6 py-2 rounded-full border-2 transition-all ${inputMode === 'sheet' ? 'border-green-500 bg-green-50 text-green-700 font-bold' : 'border-slate-200'}`}>📊 Google 試算表</button>
                                     </div>
                                     {inputMode === 'count' ? (
                                         <div className="max-w-xs space-y-2">
                                             <label className="text-sm text-slate-500">輸入班級人數：</label>
                                             <input type="number" value={studentCount} onChange={(e) => setStudentCount(e.target.value)} className="w-full p-4 rounded-xl border border-slate-300 outline-none text-2xl font-bold text-center" />
                                         </div>
-                                    ) : (
+                                    ) : inputMode === 'list' ? (
                                         <textarea value={rawStudentData} onChange={(e) => setRawStudentData(e.target.value)} className="flex-1 w-full p-4 rounded-xl border border-slate-300 font-mono text-sm h-64" placeholder="格式：座號 姓名 職務(選填)&#10;1 王小明 班長..." />
+                                    ) : (
+                                        <div className="max-w-xl space-y-4">
+                                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 leading-relaxed space-y-1">
+                                                <p className="font-bold">初次設定（只需做一次）</p>
+                                                <p>1. 前往 <a href="https://script.google.com" target="_blank" rel="noopener noreferrer" className="underline">script.google.com</a> 建立新專案</p>
+                                                <p>2. 貼上 <code className="bg-blue-100 px-1 rounded">Code.gs</code> 的內容並儲存</p>
+                                                <p>3. 點「部署 → 新增部署作業」，類型選「網路應用程式」</p>
+                                                <p>4. 執行身分「我」、存取對象「所有人」，複製部署 URL</p>
+                                                <p className="pt-1 text-blue-500">新學期只需換 Google Sheet 網址，不需重新部署</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2 text-slate-600">GAS 部署網址（一次性設定）</label>
+                                                <input
+                                                    type="text"
+                                                    value={gasUrl}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        setGasUrl(v);
+                                                        localStorage.setItem('gasUrl', v);
+                                                        setSheetConnected(false);
+                                                        setSheetLoadStatus('');
+                                                    }}
+                                                    placeholder="https://script.google.com/macros/s/..."
+                                                    className="w-full p-3 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-green-400"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2 text-slate-600">Google Sheet 網址（每學期換這裡）</label>
+                                                <input
+                                                    type="text"
+                                                    value={sheetUrl}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        setSheetUrl(v);
+                                                        localStorage.setItem('sheetUrl', v);
+                                                        setSheetConnected(false);
+                                                        setScoresLoaded(false);
+                                                        setSheetLoadStatus('');
+                                                    }}
+                                                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                                                    className="w-full p-3 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-green-400"
+                                                />
+                                            </div>
+                                            <div className="flex gap-3 flex-wrap">
+                                                <button
+                                                    onClick={connectToSheet}
+                                                    disabled={isLoadingSheet}
+                                                    className={`px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${isLoadingSheet ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'}`}
+                                                >
+                                                    {isLoadingSheet ? '連結中...' : '讀取名單'}
+                                                </button>
+                                                <button
+                                                    onClick={downloadTemplate}
+                                                    className="px-6 py-3 rounded-xl font-bold text-sm border-2 border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all"
+                                                >
+                                                    下載範本
+                                                </button>
+                                            </div>
+                                            {sheetLoadStatus && (
+                                                <p className={`text-sm font-medium ${sheetConnected ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {sheetConnected ? '✓ ' : '✗ '}{sheetLoadStatus}
+                                                </p>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -598,14 +831,51 @@ ${formatPeriod('final')}
                                             </div>
                                         </div>
 
-                                        <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl border p-6 shadow-sm">
-                                            <div className="text-xs text-slate-400 font-mono mb-4 overflow-x-auto whitespace-nowrap bg-slate-50 p-2 rounded">
-                                                {currentScoreSubject === '國語' ? "座號 姓名 態度 國習 筆記 平時作業 聽寫 考卷 平時測驗 平時成績 月考成績 平均 排名" :
-                                                 currentScoreSubject === '數學' ? "座號 姓名 態度 數課 數習 平時作業 數重 考卷 紙筆測驗 平時成績 月考成績 平均 排名" :
-                                                 "座號 姓名 平時成績 月考成績"}
-                                            </div>
-                                            <textarea value={rawScoreInput} onChange={(e) => setRawScoreInput(e.target.value)} className="flex-1 p-4 rounded-xl border border-slate-100 font-mono text-xs focus:ring-2 focus:ring-indigo-200 outline-none min-h-[200px]" placeholder="從 Excel 複製對應欄位後在此貼上..." />
-                                            <button onClick={handleImportScores} className="mt-4 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">匯入並自動計算名次</button>
+                                        <div className="lg:col-span-3 flex flex-col gap-4">
+                                            {gasUrl ? (
+                                                <div className="bg-white rounded-2xl border p-6 shadow-sm space-y-5">
+                                                    <div className="flex items-center gap-4 flex-wrap">
+                                                        <button
+                                                            onClick={loadScoresFromSheet}
+                                                            disabled={isLoadingSheet}
+                                                            className={`px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${isLoadingSheet ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'}`}
+                                                        >
+                                                            {isLoadingSheet ? '讀取中...' : '從 Google Sheets 讀取成績'}
+                                                        </button>
+                                                        {sheetLoadStatus && (
+                                                            <span className={`text-sm font-medium ${scoresLoaded ? 'text-green-600' : 'text-red-500'}`}>
+                                                                {scoresLoaded ? '✓ ' : '✗ '}{sheetLoadStatus}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {scoresLoaded && (
+                                                        <div>
+                                                            <p className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">已讀取科目</p>
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                {['國語', '數學', '社會', '自然'].map(sub => {
+                                                                    const midOk = Object.values(scores).some(s => s.midterm?.[sub] && Object.values(s.midterm[sub]).some(v => v));
+                                                                    const finOk = Object.values(scores).some(s => s.final?.[sub] && Object.values(s.final[sub]).some(v => v));
+                                                                    return (
+                                                                        <div key={sub} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border text-sm">
+                                                                            <span className="font-bold text-slate-700">{sub}</span>
+                                                                            <div className="flex gap-2">
+                                                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${midOk ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-400'}`}>期中{midOk ? ' ✓' : ' -'}</span>
+                                                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${finOk ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-400'}`}>期末{finOk ? ' ✓' : ' -'}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white rounded-2xl border p-8 shadow-sm text-center space-y-3">
+                                                    <p className="text-4xl">📊</p>
+                                                    <p className="text-slate-600 font-medium">請先在「名單建立」頁面連結 Google Sheets</p>
+                                                    <button onClick={() => { setActiveTab('students'); setInputMode('sheet'); }} className="px-5 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-all">前往名單建立</button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1051,14 +1321,24 @@ ${formatPeriod('final')}
                                                         {/* 顯示生成的評語 */}
                                                         {generatedComments[currentStudent.id] && (
                                                             <div className="mt-6 bg-white border border-purple-200 rounded-xl p-6 shadow-sm">
-                                                                <div className="flex justify-between items-center mb-4">
+                                                                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                                                                     <h5 className="font-bold text-purple-700">✨ 生成的評語</h5>
-                                                                    <button 
-                                                                        onClick={() => copyToClipboard(generatedComments[currentStudent.id])}
-                                                                        className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2"
-                                                                    >
-                                                                        <Copy size={16} /> 複製評語
-                                                                    </button>
+                                                                    <div className="flex gap-2 flex-wrap">
+                                                                        <button
+                                                                            onClick={() => copyToClipboard(generatedComments[currentStudent.id])}
+                                                                            className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2"
+                                                                        >
+                                                                            <Copy size={16} /> 複製評語
+                                                                        </button>
+                                                                        {gasUrl && (
+                                                                            <button
+                                                                                onClick={() => saveCommentToSheet(currentStudent.id, generatedComments[currentStudent.id])}
+                                                                                className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-bold flex items-center gap-2"
+                                                                            >
+                                                                                💾 儲存至試算表
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap border-t border-purple-100 pt-4">
                                                                     {generatedComments[currentStudent.id]}
@@ -1069,6 +1349,120 @@ ${formatPeriod('final')}
                                                 </div>
                                             )
                                         ) : <div className="h-full flex items-center justify-center text-slate-300 italic">請在左側選擇學生</div>}
+                                    </div>
+                                </div>
+                            )}
+
+
+                            {/* 頁面：評語審閱 */}
+                            {activeTab === 'review' && (
+                                <div className="flex h-full animate-in fade-in" style={{minHeight: 580}}>
+                                    {/* 左側全班列表 */}
+                                    <div className="w-64 border-r border-slate-100 bg-slate-50/50 flex flex-col flex-shrink-0">
+                                        <div className="p-4 border-b bg-white">
+                                            <h3 className="font-bold text-slate-700">全班列表</h3>
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {students.filter(s => finalComments[s.id]?.trim()).length} / {students.length} 已完成正式評語
+                                            </p>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto">
+                                            {students.length === 0 ? (
+                                                <p className="p-4 text-sm text-slate-400 italic">請先建立學生名單</p>
+                                            ) : students.map(s => {
+                                                const hasFinal = !!(finalComments[s.id]?.trim());
+                                                const hasGen = !!(parsedGenComments[s.id]?.gen1 || generatedComments[s.id]);
+                                                return (
+                                                    <button key={s.id}
+                                                        onClick={() => setSelectedStudentId(s.id)}
+                                                        className={`w-full text-left px-4 py-3 border-b transition-all ${selectedStudentId === s.id ? 'bg-white border-l-4 border-l-indigo-600 font-bold text-indigo-700 shadow-sm' : 'hover:bg-slate-100 text-slate-600'}`}
+                                                    >
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm">{s.id}. {s.name}</span>
+                                                            <span className={`text-xs font-bold ${hasFinal ? 'text-green-600' : hasGen ? 'text-amber-500' : 'text-slate-300'}`}>
+                                                                {hasFinal ? '✓' : hasGen ? '●' : '○'}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 右側編輯區 */}
+                                    <div className="flex-1 p-6 overflow-y-auto">
+                                        {currentStudent ? (
+                                            <div className="max-w-2xl mx-auto space-y-5">
+                                                {/* 頂部導航 */}
+                                                <div className="flex justify-between items-center">
+                                                    <h3 className="text-xl font-bold text-slate-800">{currentStudent.name} 的評語</h3>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={goToPreviousStudent} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 font-bold text-sm transition-all">← 上一位</button>
+                                                        <button onClick={goToNextStudent} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 font-bold text-sm transition-all">下一位 →</button>
+                                                    </div>
+                                                </div>
+
+                                                {/* 三則生成評語 */}
+                                                {[1,2,3].map(n => {
+                                                    const text = parsedGenComments[currentStudent.id]?.[`gen${n}`] ||
+                                                                 (n === 1 && !parsedGenComments[currentStudent.id] ? generatedComments[currentStudent.id] : '');
+                                                    if (!text) return null;
+                                                    return (
+                                                        <div key={n} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">生成評語 {n}</span>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={() => copyToClipboard(text)} className="px-3 py-1 bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100 text-xs font-bold transition-all">複製</button>
+                                                                    <button onClick={() => handleFinalCommentChange(currentStudent.id, text)} className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-bold transition-all">套用為正式</button>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{text}</p>
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                {/* 尚無生成評語提示 */}
+                                                {!parsedGenComments[currentStudent.id]?.gen1 && !generatedComments[currentStudent.id] && (
+                                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 text-center">
+                                                        此學生尚未生成評語，請先到「生成指令」頁籤產生
+                                                    </div>
+                                                )}
+
+                                                {/* 正式評語編輯區 */}
+                                                <div className="bg-white rounded-xl p-5 border-2 border-indigo-200 shadow-sm">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <label className="font-bold text-indigo-700 flex items-center gap-2">✏️ 正式評語</label>
+                                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                            saveStatus[currentStudent.id] === 'saving' ? 'bg-amber-100 text-amber-600' :
+                                                            saveStatus[currentStudent.id] === 'saved'  ? 'bg-green-100 text-green-600' :
+                                                            saveStatus[currentStudent.id] === 'error'  ? 'bg-red-100 text-red-600' :
+                                                            saveStatus[currentStudent.id] === 'pending' ? 'bg-slate-100 text-slate-400' : ''
+                                                        }`}>
+                                                            {saveStatus[currentStudent.id] === 'saving'  ? '儲存中...' :
+                                                             saveStatus[currentStudent.id] === 'saved'   ? '✓ 已儲存' :
+                                                             saveStatus[currentStudent.id] === 'error'   ? '✗ 儲存失敗' :
+                                                             saveStatus[currentStudent.id] === 'pending' ? '未儲存' : ''}
+                                                        </span>
+                                                    </div>
+                                                    <textarea
+                                                        value={finalComments[currentStudent.id] || ''}
+                                                        onChange={(e) => handleFinalCommentChange(currentStudent.id, e.target.value)}
+                                                        className="w-full p-3 rounded-lg border border-slate-200 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
+                                                        style={{minHeight: 160}}
+                                                        placeholder={gasUrl ? '輸入後 1.5 秒自動儲存至 Google Sheets...' : '（請先連結 Google Sheets 才能自動儲存）'}
+                                                    />
+                                                    {gasUrl && (
+                                                        <button
+                                                            onClick={() => saveFinalCommentToSheet(currentStudent.id, finalComments[currentStudent.id] || '')}
+                                                            className="mt-3 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
+                                                        >
+                                                            💾 立即儲存
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center text-slate-300 italic">請在左側選擇學生</div>
+                                        )}
                                     </div>
                                 </div>
                             )}
