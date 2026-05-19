@@ -573,29 +573,39 @@ ${formatPeriod('final')}
 
                 try {
                     const models = [
+                        { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', name: 'gemini-2.0-flash' },
                         { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent', name: 'gemini-2.0-flash-lite' },
-                        { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent', name: 'gemini-1.5-flash' },
-                        { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', name: 'gemini-1.5-flash (v1beta)' },
+                        { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-lite:generateContent', name: 'gemini-2.0-flash-lite(v1)' },
+                        { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent', name: 'gemini-1.5-flash(v1)' },
+                        { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent', name: 'gemini-1.5-flash-latest(v1)' },
+                        { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent', name: 'gemini-1.5-flash-latest' },
+                        { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent', name: 'gemini-1.5-pro' },
+                        { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent', name: 'gemini-1.5-pro(v1)' },
                     ];
                     let response = null;
-                    let lastErrorMsg = '';
+                    const errors = [];
                     for (const model of models) {
-                        const r = await fetch(`${model.url}?key=${geminiApiKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                        });
-                        if (r.ok) { response = r; break; }
-                        const errJson = await r.json();
-                        const msg = errJson.error?.message || `HTTP ${r.status}`;
-                        const retryMatch = msg.match(/retry in ([\d.]+)s/i);
-                        if (retryMatch) {
-                            const secs = Math.ceil(parseFloat(retryMatch[1]));
-                            throw new Error(`API 請求過於頻繁，請等待 ${secs} 秒後再試。\n（速率限制 — 免費方案每分鐘請求次數有限）`);
+                        try {
+                            const r = await fetch(`${model.url}?key=${geminiApiKey}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                            });
+                            if (r.ok) { response = r; break; }
+                            const errJson = await r.json();
+                            const msg = errJson.error?.message || `HTTP ${r.status}`;
+                            const retryMatch = msg.match(/retry in ([\d.]+)s/i);
+                            if (retryMatch) {
+                                const secs = Math.ceil(parseFloat(retryMatch[1]));
+                                throw new Error(`速率限制：請等待 ${secs} 秒後再試`);
+                            }
+                            errors.push(`${model.name}: ${msg.split('\n')[0]}`);
+                        } catch(e) {
+                            if (e.message.startsWith('速率限制')) throw e;
+                            errors.push(`${model.name}: ${e.message}`);
                         }
-                        lastErrorMsg = `[${model.name}] ${msg}`;
                     }
-                    if (!response) throw new Error(lastErrorMsg || '所有模型均無法使用');
+                    if (!response) throw new Error('所有模型均失敗：\n' + errors.join('\n'));
 
                     if (!response.ok) {
                         const errorData = await response.json();
