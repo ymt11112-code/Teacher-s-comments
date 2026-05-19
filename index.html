@@ -336,38 +336,22 @@
                 window[timerKey] = setTimeout(() => saveFinalCommentToSheet(studentId, value), 1500);
             };
 
-            const downloadTemplate = () => {
-                const bom = '﻿';
-                const csv = [
-                    '# 請依照以下格式在 Google Sheets 建立各工作表（名稱需完全吻合）',
-                    '',
-                    '# ===== 國語 工作表 =====',
-                    '座號,姓名,期中態度,期中國習,期中筆記,期中作業,期中聽寫,期中考卷,期中平時測驗,期中平時成績,期中月考成績,期中平均,期中排名,期末態度,期末國習,期末筆記,期末作業,期末聽寫,期末考卷,期末平時測驗,期末平時成績,期末月考成績,期末平均,期末排名',
-                    '1,範例學生,90,85,80,88,92,78,86,84,90,86,3,88,83,79,87,91,80,84,83,89,85,2',
-                    '',
-                    '# ===== 數學 工作表 =====',
-                    '座號,姓名,期中態度,期中數課平均,期中數習平均,期中作業,期中數重平均,期中考卷平均,期中紙筆測驗,期中平時成績,期中月考成績,期中平均,期中排名,期末態度,期末數課平均,期末數習平均,期末作業,期末數重平均,期末考卷平均,期末紙筆測驗,期末平時成績,期末月考成績,期末平均,期末排名',
-                    '1,範例學生,88,82,79,90,85,88,84,86,88,87,4,90,84,81,92,87,89,86,88,91,89,3',
-                    '',
-                    '# ===== 社會 工作表 =====',
-                    '座號,姓名,期中平時成績,期中月考成績,期末平時成績,期末月考成績',
-                    '1,範例學生,85,90,88,92',
-                    '',
-                    '# ===== 自然 工作表 =====',
-                    '座號,姓名,期中平時成績,期中月考成績,期末平時成績,期末月考成績',
-                    '1,範例學生,82,88,85,91',
-                    '',
-                    '# ===== 評語 工作表（由系統自動建立）=====',
-                    '座號,姓名,評語',
-                    '1,範例學生,（由系統自動填入）'
-                ].join('\n');
-                const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'GoogleSheet範本格式.csv';
-                a.click();
-                URL.revokeObjectURL(url);
+            const createTemplateSheet = async () => {
+                if (!gasUrl.trim()) {
+                    alert('請先填入 GAS 部署網址，才能建立副本。');
+                    return;
+                }
+                setIsLoadingSheet(true);
+                setSheetLoadStatus('');
+                try {
+                    const data = await callGAS({ action: 'createTemplate' });
+                    window.open(data.url, '_blank');
+                    setSheetLoadStatus('副本已建立，請在新分頁中重新命名後，將網址填入上方欄位');
+                } catch (err) {
+                    setSheetLoadStatus('建立失敗：' + err.message);
+                } finally {
+                    setIsLoadingSheet(false);
+                }
             };
 
             const styleOptions = ["親切溫暖", "嚴謹專業", "幽默風趣", "簡潔俐落", "鼓勵讚賞", "偏重品德", "偏重學科", "建設性批評", "家長導向", "正向積極", "文青感",  "強調潛力", "具體細節"];
@@ -522,7 +506,7 @@
                 return `你是一位資深且充滿教育熱忱的國民小學班級導師。我將提供班上學生的「性格特質標籤」、「成績表現」、「希望的評語風格」以及「字數限制」。請你根據這些資訊，綜合分析學生的特點，為每位學生撰寫 3 則期末評語供我參考。請確保評語內容具體、語氣通順，並能給予學生適當的鼓勵或建議。
 
 【學生背景】
-姓名：${student.name} ${student.title ? `(${student.title})` : ''}
+座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
 性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}
 
 【學業成就分析 (含自動計算之全班分項排名)】
@@ -719,10 +703,11 @@ ${formatPeriod('final')}
                                                     {isLoadingSheet ? '連結中...' : '讀取名單'}
                                                 </button>
                                                 <button
-                                                    onClick={downloadTemplate}
-                                                    className="px-6 py-3 rounded-xl font-bold text-sm border-2 border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all"
+                                                    onClick={createTemplateSheet}
+                                                    disabled={isLoadingSheet}
+                                                    className="px-6 py-3 rounded-xl font-bold text-sm border-2 border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50"
                                                 >
-                                                    下載範本
+                                                    建立副本
                                                 </button>
                                             </div>
                                             {sheetLoadStatus && (
