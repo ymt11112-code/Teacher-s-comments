@@ -346,7 +346,11 @@
                 try {
                     const data = await callGAS({ action: 'createTemplate' });
                     window.open(data.url, '_blank');
-                    setSheetLoadStatus('副本已建立，請在新分頁中重新命名後，將網址填入上方欄位');
+                    setSheetUrl(data.url);
+                    localStorage.setItem('sheetUrl', data.url);
+                    setScoresLoaded(false);
+                    setSheetConnected(false);
+                    setSheetLoadStatus('副本已建立並開啟！建議先重新命名，再點「讀取名單」');
                 } catch (err) {
                     setSheetLoadStatus('建立失敗：' + err.message);
                 } finally {
@@ -568,7 +572,7 @@ ${formatPeriod('final')}
                 const prompt = getFullPrompt(student);
 
                 try {
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -979,7 +983,7 @@ ${formatPeriod('final')}
                                                             >
                                                                 <option value="">選擇學生...</option>
                                                                 {students.map(s => (
-                                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                                    <option key={s.id} value={s.id}>{s.id}. {s.name}</option>
                                                                 ))}
                                                             </select>
                                                         </div>
@@ -1230,7 +1234,7 @@ ${formatPeriod('final')}
                                                             >
                                                                 <option value="">選擇學生...</option>
                                                                 {students.map(s => (
-                                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                                    <option key={s.id} value={s.id}>{s.id}. {s.name}</option>
                                                                 ))}
                                                             </select>
                                                         </div>
