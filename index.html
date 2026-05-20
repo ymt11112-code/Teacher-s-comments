@@ -93,6 +93,7 @@
             const [isGenerating, setIsGenerating] = useState(false);
             const [retryCountdown, setRetryCountdown] = useState(0);
             const retryTimerRef = useRef(null);
+            const abortControllerRef = useRef(null);
             
             // --- 學生名單收放狀態 ---
             const [isStudentListCollapsed, setIsStudentListCollapsed] = useState(false);
@@ -573,13 +574,15 @@ ${formatPeriod('final')}
 
                 setIsGenerating(true);
                 const prompt = getFullPrompt(student);
+                abortControllerRef.current = new AbortController();
 
                 try {
                     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
                     const r = await fetch(`${apiUrl}?key=${geminiApiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                        signal: abortControllerRef.current.signal
                     });
                     if (!r.ok) {
                         const errJson = await r.json();
@@ -606,6 +609,7 @@ ${formatPeriod('final')}
                         [student.id]: generatedText
                     }));
                 } catch (error) {
+                    if (error.name === 'AbortError') { setIsGenerating(false); return; }
                     console.error('生成評語失敗:', error);
                     const secsMatch = error.message.match(/等待\s*(\d+)\s*秒/);
                     if (secsMatch) {
@@ -1363,30 +1367,45 @@ ${formatPeriod('final')}
                                                             </div>
                                                         )}
                                                         
-                                                        {/* 生成按鈕 */}
-                                                        <button
-                                                            onClick={() => generateCommentWithGemini(currentStudent)}
-                                                            disabled={isGenerating || !geminiApiKey || retryCountdown > 0}
-                                                            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${
-                                                                isGenerating || !geminiApiKey || retryCountdown > 0
-                                                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 active:scale-95'
-                                                            }`}
-                                                        >
-                                                            {isGenerating ? (
-                                                                <>
-                                                                    <span className="animate-spin">⏳</span> 生成中...
-                                                                </>
-                                                            ) : retryCountdown > 0 ? (
-                                                                <>
-                                                                    ⏱ 請等待 {retryCountdown} 秒後再按...
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Sparkles size={20} /> 使用 Gemini 生成評語
-                                                                </>
+                                                        {/* 生成 / 停止按鈕 */}
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => generateCommentWithGemini(currentStudent)}
+                                                                disabled={isGenerating || !geminiApiKey || retryCountdown > 0}
+                                                                className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${
+                                                                    isGenerating || !geminiApiKey || retryCountdown > 0
+                                                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                                                        : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 active:scale-95'
+                                                                }`}
+                                                            >
+                                                                {isGenerating ? (
+                                                                    <>
+                                                                        <span className="animate-spin">⏳</span> 生成中...
+                                                                    </>
+                                                                ) : retryCountdown > 0 ? (
+                                                                    <>
+                                                                        ⏱ 請等待 {retryCountdown} 秒後再按...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Sparkles size={20} /> 使用 Gemini 生成評語
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                            {(isGenerating || retryCountdown > 0) && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (abortControllerRef.current) abortControllerRef.current.abort();
+                                                                        if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
+                                                                        setRetryCountdown(0);
+                                                                        setIsGenerating(false);
+                                                                    }}
+                                                                    className="px-5 py-4 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 active:scale-95 transition-all shadow-lg whitespace-nowrap"
+                                                                >
+                                                                    ✕ 停止
+                                                                </button>
                                                             )}
-                                                        </button>
+                                                        </div>
                                                         
                                                         {/* 顯示生成的評語 */}
                                                         {generatedComments[currentStudent.id] && (
