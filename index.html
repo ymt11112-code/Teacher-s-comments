@@ -25,7 +25,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
         
         // 简单的图标组件（使用 Unicode 符号）
         const Icon = ({ children, size = 18, className = "" }) => (
@@ -91,6 +91,9 @@
             const [geminiApiKey, setGeminiApiKey] = useState('');
             const [generatedComments, setGeneratedComments] = useState({}); // 存储每个学生生成的评语
             const [isGenerating, setIsGenerating] = useState(false);
+            const [retryCountdown, setRetryCountdown] = useState(0);
+            const retryTimerRef = useRef(null);
+            const pendingRetryRef = useRef(null);
             
             // --- 學生名單收放狀態 ---
             const [isStudentListCollapsed, setIsStudentListCollapsed] = useState(false);
@@ -567,6 +570,7 @@ ${formatPeriod('final')}
                     alert('請先設定 Gemini API Key！\n\n您可以在「風格設定」頁面設定 API Key。');
                     return;
                 }
+                if (retryCountdown > 0) return;
 
                 setIsGenerating(true);
                 const prompt = getFullPrompt(student);
@@ -622,7 +626,28 @@ ${formatPeriod('final')}
                     }));
                 } catch (error) {
                     console.error('生成評語失敗:', error);
-                    alert('生成評語失敗: ' + error.message + '\n\n請檢查：\n1. API Key 是否正確\n2. 網路連線是否正常\n3. API 配額是否足夠');
+                    const secsMatch = error.message.match(/等待\s*(\d+)\s*秒/);
+                    if (secsMatch) {
+                        const secs = parseInt(secsMatch[1]);
+                        setRetryCountdown(secs);
+                        if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+                        pendingRetryRef.current = student;
+                        retryTimerRef.current = setInterval(() => {
+                            setRetryCountdown(prev => {
+                                if (prev <= 1) {
+                                    clearInterval(retryTimerRef.current);
+                                    retryTimerRef.current = null;
+                                    const s = pendingRetryRef.current;
+                                    pendingRetryRef.current = null;
+                                    if (s) setTimeout(() => generateCommentWithGemini(s), 100);
+                                    return 0;
+                                }
+                                return prev - 1;
+                            });
+                        }, 1000);
+                    } else {
+                        alert('生成評語失敗: ' + error.message);
+                    }
                 } finally {
                     setIsGenerating(false);
                 }
@@ -1362,18 +1387,22 @@ ${formatPeriod('final')}
                                                         )}
                                                         
                                                         {/* 生成按鈕 */}
-                                                        <button 
+                                                        <button
                                                             onClick={() => generateCommentWithGemini(currentStudent)}
-                                                            disabled={isGenerating || !geminiApiKey}
+                                                            disabled={isGenerating || !geminiApiKey || retryCountdown > 0}
                                                             className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${
-                                                                isGenerating || !geminiApiKey 
-                                                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                                                isGenerating || !geminiApiKey || retryCountdown > 0
+                                                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                                                                     : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 active:scale-95'
                                                             }`}
                                                         >
                                                             {isGenerating ? (
                                                                 <>
                                                                     <span className="animate-spin">⏳</span> 生成中...
+                                                                </>
+                                                            ) : retryCountdown > 0 ? (
+                                                                <>
+                                                                    ⏱ 速率限制，{retryCountdown} 秒後自動重試...
                                                                 </>
                                                             ) : (
                                                                 <>
