@@ -578,29 +578,31 @@ ${formatPeriod('final')}
                 abortControllerRef.current = new AbortController();
 
                 try {
-                    // 自動選擇可用模型（每次生成前查詢一次）
-                    let modelId = activeGeminiModel;
-                    if (!modelId) {
-                        const listR = await fetch(
-                            `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`,
-                            { signal: abortControllerRef.current.signal }
-                        );
-                        if (!listR.ok) throw new Error(`無法查詢可用模型 (HTTP ${listR.status})，請確認 API Key 正確`);
-                        const listData = await listR.json();
-                        const usable = (listData.models || []).filter(m =>
-                            m.supportedGenerationMethods?.includes('generateContent') &&
-                            /gemini/i.test(m.name) &&
-                            !/vision|embedding|aqa/i.test(m.name)
-                        );
-                        if (usable.length === 0) throw new Error('此 API Key 找不到任何可用的 Gemini 模型');
-                        const pick = usable.find(m => /2\.0-flash(?!.*lite)/i.test(m.name)) ||
-                                     usable.find(m => /2\.0/i.test(m.name)) ||
-                                     usable.find(m => /1\.5-flash/i.test(m.name)) ||
-                                     usable.find(m => /1\.5/i.test(m.name)) ||
-                                     usable[0];
-                        modelId = pick.name.replace(/^models\//, '');
-                        setActiveGeminiModel(modelId);
+                    // 查詢可用模型
+                    const listR = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`,
+                        { signal: abortControllerRef.current.signal }
+                    );
+                    if (!listR.ok) {
+                        const e = await listR.json().catch(() => ({}));
+                        throw new Error(`查詢模型失敗 (HTTP ${listR.status})：${e.error?.message || '請確認 API Key 正確'}`);
                     }
+                    const listData = await listR.json();
+                    const allModels = (listData.models || []).map(m => m.name.replace(/^models\//, ''));
+                    const usable = (listData.models || []).filter(m =>
+                        m.supportedGenerationMethods?.includes('generateContent') &&
+                        /gemini/i.test(m.name) &&
+                        !/vision|embedding|aqa/i.test(m.name)
+                    );
+                    if (usable.length === 0) throw new Error(`查到 ${allModels.length} 個模型，但無一支援 generateContent：\n${allModels.join(', ')}`);
+
+                    const pick = usable.find(m => /2\.0-flash(?!.*lite)/i.test(m.name)) ||
+                                 usable.find(m => /2\.0/i.test(m.name)) ||
+                                 usable.find(m => /1\.5-flash/i.test(m.name)) ||
+                                 usable.find(m => /1\.5/i.test(m.name)) ||
+                                 usable[0];
+                    const modelId = pick.name.replace(/^models\//, '');
+                    setActiveGeminiModel(modelId);
 
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
                     const r = await fetch(`${apiUrl}?key=${geminiApiKey}`, {
@@ -614,11 +616,11 @@ ${formatPeriod('final')}
                         const msg = errJson.error?.message || `HTTP ${r.status}`;
                         const retryMatch = msg.match(/retry in ([\d.]+)s/i);
                         if (retryMatch) {
-                            setActiveGeminiModel(''); // 下次重新查詢模型
+                            setActiveGeminiModel('');
                             throw new Error(`速率限制：請等待 ${Math.ceil(parseFloat(retryMatch[1]))} 秒後再試`);
                         }
                         setActiveGeminiModel('');
-                        throw new Error(`[${modelId}] ${msg}`);
+                        throw new Error(`模型 ${modelId} 錯誤：${msg}`);
                     }
                     const response = r;
 
@@ -653,9 +655,9 @@ ${formatPeriod('final')}
                                 return prev - 1;
                             });
                         }, 1000);
-                    } else {
-                        alert('生成評語失敗: ' + error.message);
                     }
+                    // 一律顯示完整錯誤（速率限制也顯示）
+                    alert('生成評語失敗：\n\n' + error.message);
                 } finally {
                     setIsGenerating(false);
                 }
