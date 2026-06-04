@@ -95,7 +95,7 @@
             const retryTimerRef = useRef(null);
             const abortControllerRef = useRef(null);
             const [activeGeminiModel, setActiveGeminiModel] = useState('');
-            const [promptTemplate, setPromptTemplate] = useState('');
+            const [promptTemplate, setPromptTemplate] = useState(() => localStorage.getItem('promptTemplate') || '');
             const [isSavingTemplate, setIsSavingTemplate] = useState(false);
             
             // --- 學生名單收放狀態 ---
@@ -271,7 +271,7 @@
                     }
                     try {
                         const tmpl = await callGAS({ action: 'getPromptTemplate' });
-                        if (tmpl) setPromptTemplate(tmpl);
+                        if (tmpl) { setPromptTemplate(tmpl); localStorage.setItem('promptTemplate', tmpl); }
                     } catch(e) { /* 無提示詞工作表時忽略 */ }
                 } catch (err) {
                     setSheetLoadStatus('連結失敗：' + err.message);
@@ -340,17 +340,13 @@
                 }
             };
 
-            const savePromptTemplateToSheet = async (tmpl) => {
-                if (!gasUrl.trim()) { alert('請先連結 Google Sheets'); return; }
-                setIsSavingTemplate(true);
-                try {
-                    await callGAS({ action: 'savePromptTemplate', template: encodeURIComponent(tmpl) });
-                    alert('提示詞已儲存至試算表「提示詞」工作表！');
-                } catch(err) {
-                    alert('儲存失敗：' + err.message);
-                } finally {
-                    setIsSavingTemplate(false);
-                }
+            const savePromptTemplateToSheet = (tmpl) => {
+                // 提示詞文字通常過長，無法透過 URL 參數傳送至 GAS
+                // 改存至 localStorage，下次開啟會自動載入
+                localStorage.setItem('promptTemplate', tmpl);
+                setPromptTemplate(tmpl);
+                alert('提示詞已儲存至瀏覽器！\n\n若要永久儲存至 Google Sheets，請直接在試算表的「提示詞」工作表 B1~B4 欄修改。');
+                setIsSavingTemplate(false);
             };
 
             const saveFinalCommentToSheet = async (studentId, comment) => {
@@ -664,6 +660,10 @@
                             result = result.slice(0, finIdx2).trimEnd();
                         }
                     }
+                    // 無期末資料時加禁止假設的明確指示
+                    if (!finData) {
+                        result = result.trimEnd() + '\n\n⚠️ 重要：本次只有期中成績，沒有期末成績資料。撰寫評語時請勿假設、推測或提及期末考的表現，只根據期中成績描述。';
+                    }
                     return result.trim();
                 }
 
@@ -673,6 +673,7 @@
                     finData ? `(2) 期末考階段表現：\n${finData}` : null,
                 ].filter(Boolean).join('\n\n') || '尚未匯入成績。';
 
+                const noFinalNote = !finData ? '\n\n⚠️ 重要：本次只有期中成績，沒有期末成績資料。撰寫評語時請勿假設、推測或提及期末考的表現，只根據期中成績描述。' : '';
                 return `${defaultInstruction}
 
 【學生背景】
@@ -682,7 +683,7 @@
 【學業成就分析 (含自動計算之全班分項排名)】
 ※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
 
-${scoreLines}`.trim();
+${scoreLines}${noFinalNote}`.trim();
             };
 
             const copyToClipboard = (text) => {
