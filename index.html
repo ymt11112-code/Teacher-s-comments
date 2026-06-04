@@ -246,6 +246,17 @@
                 return ranks;
             }, [scores, students]);
 
+            // --- base64 編碼（縮短長文字在 URL 中的長度）---
+            const b64Enc = (str) => {
+                if (!str) return '';
+                try {
+                    const b64 = btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p) =>
+                        String.fromCharCode(parseInt(p, 16))
+                    ));
+                    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                } catch(e) { return encodeURIComponent(str); }
+            };
+
             // --- GAS API 呼叫 ---
             const callGAS = async (params) => {
                 const url = new URL(gasUrl.trim());
@@ -342,9 +353,9 @@
                         action: 'saveComment',
                         id: studentId,
                         name: student.name,
-                        gen1: encodeURIComponent(gen1),
-                        gen2: encodeURIComponent(gen2),
-                        gen3: encodeURIComponent(gen3)
+                        gen1: b64Enc(gen1),
+                        gen2: b64Enc(gen2),
+                        gen3: b64Enc(gen3)
                     });
                     alert('3 則評語已儲存至 Google Sheets！');
                 } catch (err) {
@@ -380,7 +391,7 @@
                         await callGAS({
                             action: 'savePromptCell',
                             cell: i + 1,
-                            value: encodeURIComponent(parts[i] || '')
+                            value: b64Enc(parts[i] || '')
                         });
                     }
                     alert('提示詞已儲存至試算表：\n' + sectionLabels.map((l,i) => `${l}：${parts[i] ? '✓' : '（空）'}`).join('\n'));
@@ -395,7 +406,7 @@
                 if (!gasUrl.trim()) return;
                 setSaveStatus(prev => ({ ...prev, [studentId]: 'saving' }));
                 try {
-                    await callGAS({ action: 'saveFinalComment', id: studentId, comment: encodeURIComponent(comment) });
+                    await callGAS({ action: 'saveFinalComment', id: studentId, comment: b64Enc(comment) });
                     setSaveStatus(prev => ({ ...prev, [studentId]: 'saved' }));
                 } catch (err) {
                     setSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));

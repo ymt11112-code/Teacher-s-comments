@@ -52,16 +52,16 @@ function doGet(e) {
         saveComment(ss,
           e.parameter.id,
           e.parameter.name,
-          decodeURIComponent(e.parameter.gen1 || ''),
-          decodeURIComponent(e.parameter.gen2 || ''),
-          decodeURIComponent(e.parameter.gen3 || '')
+          b64Dec(e.parameter.gen1 || ''),
+          b64Dec(e.parameter.gen2 || ''),
+          b64Dec(e.parameter.gen3 || '')
         );
         result = { ok:true };
       }
       else if (action === 'saveFinalComment') {
         saveFinalComment(ss,
           e.parameter.id,
-          decodeURIComponent(e.parameter.comment || '')
+          b64Dec(e.parameter.comment || '')
         );
         result = { ok:true };
       }
@@ -73,7 +73,7 @@ function doGet(e) {
       else if (action === 'savePromptCell') {
         savePromptCell(ss,
           parseInt(e.parameter.cell) || 1,
-          decodeURIComponent(e.parameter.value || '')
+          b64Dec(e.parameter.value || '')
         );
         result = { ok:true };
       }
@@ -86,6 +86,19 @@ function doGet(e) {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── base64 解碼（支援 URL-safe base64，相容舊版 decodeURIComponent）──
+function b64Dec(str) {
+  if (!str) return '';
+  try {
+    var b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    var pad = b64.length % 4;
+    if (pad) b64 += '==='.slice(pad);
+    return Utilities.newBlob(Utilities.base64Decode(b64)).getDataAsString('UTF-8');
+  } catch(e) {
+    try { return decodeURIComponent(str); } catch(e2) { return str; }
+  }
 }
 
 // ── 從網址解析試算表 ───────────────────────────────────────
