@@ -70,6 +70,13 @@ function doGet(e) {
         savePromptTemplate(ss, decodeURIComponent(e.parameter.template || ''));
         result = { ok:true };
       }
+      else if (action === 'savePromptCell') {
+        savePromptCell(ss,
+          parseInt(e.parameter.cell) || 1,
+          decodeURIComponent(e.parameter.value || '')
+        );
+        result = { ok:true };
+      }
       else result = { ok:false, error:'未知的 action' };
     }
   } catch(err) {
@@ -227,8 +234,19 @@ function savePromptTemplate(ss, template) {
     sheet = ss.insertSheet('提示詞');
     sheet.setColumnWidth(2, 800);
   }
-  // 存回 B1（合併後的完整提示詞）
   sheet.getRange('B1').setValue(template);
+}
+
+// ── 儲存單格提示詞（B1~B4）──────────────────────────────────
+function savePromptCell(ss, cellIndex, value) {
+  let sheet = ss.getSheetByName('提示詞');
+  if (!sheet) {
+    sheet = ss.insertSheet('提示詞');
+    sheet.setColumnWidth(2, 800);
+  }
+  if (cellIndex >= 1 && cellIndex <= 4) {
+    sheet.getRange(cellIndex, 2).setValue(value);
+  }
 }
 
 // ── 儲存正式評語（只更新 G 欄）────────────────────────────

@@ -340,13 +340,38 @@
                 }
             };
 
-            const savePromptTemplateToSheet = (tmpl) => {
-                // 提示詞文字通常過長，無法透過 URL 參數傳送至 GAS
-                // 改存至 localStorage，下次開啟會自動載入
+            const savePromptTemplateToSheet = async (tmpl) => {
+                // 先存 localStorage
                 localStorage.setItem('promptTemplate', tmpl);
                 setPromptTemplate(tmpl);
-                alert('提示詞已儲存至瀏覽器！\n\n若要永久儲存至 Google Sheets，請直接在試算表的「提示詞」工作表 B1~B4 欄修改。');
-                setIsSavingTemplate(false);
+
+                if (!gasUrl.trim()) {
+                    alert('提示詞已儲存至瀏覽器！');
+                    return;
+                }
+
+                setIsSavingTemplate(true);
+                try {
+                    // 按段落切分成最多 4 份，分別存到 B1~B4
+                    const paras = tmpl.split(/\n{2,}/).filter(p => p.trim());
+                    const total = paras.length;
+                    const chunkSize = Math.ceil(total / 4);
+                    const parts = [0, 1, 2, 3].map(i =>
+                        paras.slice(i * chunkSize, (i + 1) * chunkSize).join('\n\n')
+                    );
+                    for (let i = 0; i < 4; i++) {
+                        await callGAS({
+                            action: 'savePromptCell',
+                            cell: i + 1,
+                            value: encodeURIComponent(parts[i] || '')
+                        });
+                    }
+                    alert('提示詞已分別儲存至試算表 B1~B4！');
+                } catch(err) {
+                    alert('儲存至試算表失敗：' + err.message + '\n\n提示詞已保留在瀏覽器中。');
+                } finally {
+                    setIsSavingTemplate(false);
+                }
             };
 
             const saveFinalCommentToSheet = async (studentId, comment) => {
