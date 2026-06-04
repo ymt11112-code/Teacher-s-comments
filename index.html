@@ -517,12 +517,60 @@
                 const data = scores[studentId]?.[period]?.[subject];
                 if (!data) return null;
 
+                const total = students.length || 1;
+                const topLine = Math.ceil(total * 0.33);
+                const botLine = Math.floor(total * 0.67);
+
+                const getRank = (field) => {
+                    const r = calculatedRanks[period]?.[subject]?.[field]?.[studentId];
+                    return r ? parseInt(r) : null;
+                };
+                const getVal = (field) => (data[field] && data[field] !== '') ? data[field] : null;
+
+                const analyzeItems = (items) => {
+                    const strong = [], weak = [], mid = [];
+                    items.forEach(({ key, name }) => {
+                        const v = getVal(key);
+                        const r = getRank(key);
+                        if (!v) return;
+                        const entry = `${name}${v}(第${r ?? '?'}名)`;
+                        if (r && r <= topLine) strong.push(entry);
+                        else if (r && r >= botLine) weak.push(entry);
+                        else mid.push(entry);
+                    });
+                    return { strong, weak, mid };
+                };
+
+                const buildLine = (label, items, avg, rank) => {
+                    const { strong, weak } = analyzeItems(items);
+                    const avgVal = getVal(avg);
+                    const rankVal = getVal(rank);
+                    let parts = [];
+                    if (strong.length) parts.push(`強項：${strong.join('、')}`);
+                    if (weak.length)   parts.push(`弱項：${weak.join('、')}`);
+                    if (!strong.length && !weak.length) parts.push('各項表現平均');
+                    if (avgVal) parts.push(`平均${avgVal}（全班第${getRank(avg) ?? rankVal ?? '?'}名）`);
+                    return `[${label}] ${parts.join('；')}`;
+                };
+
                 if (subject === '國語') {
-                    return `[國語] 態度：${getDisplayValue(studentId, period, '國語', 'attitude')}，國習：${getDisplayValue(studentId, period, '國語', 'workbook')}，筆記：${getDisplayValue(studentId, period, '國語', 'note')}，平時作業：${getDisplayValue(studentId, period, '國語', 'hw')}，聽寫：${getDisplayValue(studentId, period, '國語', 'dictation')}，考卷：${getDisplayValue(studentId, period, '國語', 'sheet')}，平時測驗：${getDisplayValue(studentId, period, '國語', 'quiz')}，平時成績：${getDisplayValue(studentId, period, '國語', 'daily')}，月考成績：${getDisplayValue(studentId, period, '國語', 'exam')}，平均：${getDisplayValue(studentId, period, '國語', 'avg')}，排名：${getDisplayValue(studentId, period, '國語', 'rank', true)}`;
+                    return buildLine('國語', [
+                        {key:'workbook',name:'國習'},{key:'note',name:'筆記'},
+                        {key:'hw',name:'作業'},{key:'dictation',name:'聽寫'},
+                        {key:'sheet',name:'考卷'},{key:'quiz',name:'平時測驗'},
+                        {key:'daily',name:'平時成績'},{key:'exam',name:'月考'},
+                    ], 'avg', 'rank');
                 } else if (subject === '數學') {
-                    return `[數學] 態度：${getDisplayValue(studentId, period, '數學', 'attitude')}，數課：${getDisplayValue(studentId, period, '數學', 'textbookAvg')}，數習：${getDisplayValue(studentId, period, '數學', 'workbookAvg')}，平時作業：${getDisplayValue(studentId, period, '數學', 'hw')}，數重：${getDisplayValue(studentId, period, '數學', 'heavyAvg')}，考卷：${getDisplayValue(studentId, period, '數學', 'sheetAvg')}，平時測驗：${getDisplayValue(studentId, period, '數學', 'paperQuiz')}，平時成績：${getDisplayValue(studentId, period, '數學', 'daily')}，月考成績：${getDisplayValue(studentId, period, '數學', 'exam')}，平均：${getDisplayValue(studentId, period, '數學', 'avg')}，排名：${getDisplayValue(studentId, period, '數學', 'rank', true)}`;
+                    return buildLine('數學', [
+                        {key:'textbookAvg',name:'數課'},{key:'workbookAvg',name:'數習'},
+                        {key:'hw',name:'作業'},{key:'heavyAvg',name:'數重'},
+                        {key:'sheetAvg',name:'考卷'},{key:'paperQuiz',name:'紙筆'},
+                        {key:'daily',name:'平時成績'},{key:'exam',name:'月考'},
+                    ], 'avg', 'rank');
                 } else {
-                    return `[${subject}] 平時成績：${getDisplayValue(studentId, period, subject, 'daily')}，月考成績：${getDisplayValue(studentId, period, subject, 'exam')}`;
+                    const dv = getVal('daily'), ev = getVal('exam');
+                    const dr = getRank('daily'), er = getRank('exam');
+                    return `[${subject}] 平時：${dv ?? '無'}(第${dr ?? '?'}名)，月考：${ev ?? '無'}(第${er ?? '?'}名)`;
                 }
             };
 
