@@ -561,21 +561,63 @@
 評語三：
 [評語內容]`;
 
-                const instruction = promptTemplate
-                    ? promptTemplate
+                const midData = formatPeriod('midterm');
+                const finData = formatPeriod('final');
+
+                if (promptTemplate) {
+                    // 將 Google Sheets 模板中的欄位填入實際學生資料
+                    const subs = ['國語','數學','社會','自然'];
+                    let result = promptTemplate
                         .replace(/\{\{風格\}\}/g, combinedStyle || '正向積極、溫暖細緻')
                         .replace(/\{\{字數\}\}/g, styleConfig.wordLimit)
                         .replace(/\{\{範本\}\}/g, styleConfig.customStyle || '無')
-                    : defaultInstruction;
+                        // 填入學生基本資料（配對「欄位名稱：」後方的空白行）
+                        .replace(/(座號[：:])[ \t]*(?=\n|$)/gm,
+                            `$1${student.id}`)
+                        .replace(/(姓名[：:])[ \t]*(?=\n|$)/gm,
+                            `$1${student.name}${student.title ? ` (${student.title})` : ''}`)
+                        .replace(/(性格特質[：:])[ \t]*(?=\n|$)/gm,
+                            `$1${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}`);
 
-                const midData = formatPeriod('midterm');
-                const finData = formatPeriod('final');
+                    // 找到期中/期末分界，分別替換 [科目] 行
+                    const midIdx = result.search(/\(1\)[^\n]*期中/);
+                    const finIdx = result.search(/\(2\)[^\n]*期末/);
+
+                    const replaceSubs = (section, period) => {
+                        let s = section;
+                        subs.forEach(sub => {
+                            const actual = formatScoreToChinese(student.id, period, sub);
+                            if (actual) {
+                                s = s.replace(new RegExp(`\\[${sub}\\][^\\n]*`, 'g'), actual);
+                            }
+                        });
+                        return s;
+                    };
+
+                    if (midIdx !== -1) {
+                        const endOfMid = finIdx !== -1 ? finIdx : result.length;
+                        const replaced = replaceSubs(result.slice(midIdx, endOfMid), 'midterm');
+                        result = result.slice(0, midIdx) + replaced + result.slice(endOfMid);
+                    }
+                    const finIdx2 = result.search(/\(2\)[^\n]*期末/);
+                    if (finIdx2 !== -1) {
+                        if (finData) {
+                            result = result.slice(0, finIdx2) + replaceSubs(result.slice(finIdx2), 'final');
+                        } else {
+                            // 無期末資料，移除整個期末段落
+                            result = result.slice(0, finIdx2).trimEnd();
+                        }
+                    }
+                    return result.trim();
+                }
+
+                // 使用預設模板（未載入 Google Sheets 提示詞時）
                 const scoreLines = [
                     midData ? `(1) 期中考階段表現：\n${midData}` : null,
                     finData ? `(2) 期末考階段表現：\n${finData}` : null,
                 ].filter(Boolean).join('\n\n') || '尚未匯入成績。';
 
-                return `${instruction}
+                return `${defaultInstruction}
 
 【學生背景】
 座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
