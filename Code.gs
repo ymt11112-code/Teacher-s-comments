@@ -215,17 +215,20 @@ function createTemplate() {
 function getPromptTemplate(ss) {
   const sheet = ss.getSheetByName('提示詞');
   if (!sheet) return '';
-  const val = sheet.getRange(1, 1).getValue();
-  return val ? val.toString() : '';
+  // 讀取 B1:B4，合併為完整提示詞
+  const vals = sheet.getRange('B1:B4').getValues();
+  const parts = vals.map(row => (row[0] || '').toString().trim()).filter(v => v);
+  return parts.join('\n\n');
 }
 
 function savePromptTemplate(ss, template) {
   let sheet = ss.getSheetByName('提示詞');
   if (!sheet) {
     sheet = ss.insertSheet('提示詞');
-    sheet.setColumnWidth(1, 800);
+    sheet.setColumnWidth(2, 800);
   }
-  sheet.getRange(1, 1).setValue(template);
+  // 存回 B1（合併後的完整提示詞）
+  sheet.getRange('B1').setValue(template);
 }
 
 // ── 儲存正式評語（只更新 G 欄）────────────────────────────
