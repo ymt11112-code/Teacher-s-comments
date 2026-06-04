@@ -95,7 +95,19 @@
             const retryTimerRef = useRef(null);
             const abortControllerRef = useRef(null);
             const [activeGeminiModel, setActiveGeminiModel] = useState('');
-            const [promptTemplate, setPromptTemplate] = useState(() => localStorage.getItem('promptTemplate') || '');
+            // 去除因 B1~B4 重複儲存造成的段落重複
+            const dedupeTemplate = (tmpl) => {
+                if (!tmpl) return tmpl;
+                const headers = ['【引言】', '【學生背景】', '【學業成就分析', '【撰寫指南】'];
+                for (const h of headers) {
+                    const first = tmpl.indexOf(h);
+                    if (first === -1) continue;
+                    const second = tmpl.indexOf(h, first + h.length);
+                    if (second !== -1) return tmpl.slice(0, second).trim();
+                }
+                return tmpl;
+            };
+            const [promptTemplate, setPromptTemplate] = useState(() => dedupeTemplate(localStorage.getItem('promptTemplate') || ''));
             const [isSavingTemplate, setIsSavingTemplate] = useState(false);
             
             // --- 學生名單收放狀態 ---
@@ -271,7 +283,7 @@
                     }
                     try {
                         const tmpl = await callGAS({ action: 'getPromptTemplate' });
-                        if (tmpl) { setPromptTemplate(tmpl); localStorage.setItem('promptTemplate', tmpl); }
+                        if (tmpl) { const clean = dedupeTemplate(tmpl); setPromptTemplate(clean); localStorage.setItem('promptTemplate', clean); }
                     } catch(e) { /* 無提示詞工作表時忽略 */ }
                 } catch (err) {
                     setSheetLoadStatus('連結失敗：' + err.message);
@@ -1563,7 +1575,9 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                         onClick={async () => {
                                                                             try {
                                                                                 const t = await callGAS({ action:'getPromptTemplate' });
-                                                                                setPromptTemplate(t || '');
+                                                                                const clean = dedupeTemplate(t || '');
+                                                                                setPromptTemplate(clean);
+                                                                                localStorage.setItem('promptTemplate', clean);
                                                                             } catch(e) { alert('讀取失敗：' + e.message); }
                                                                         }}
                                                                         className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-all shadow-sm"
