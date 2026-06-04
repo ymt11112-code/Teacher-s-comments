@@ -95,6 +95,8 @@
             const retryTimerRef = useRef(null);
             const abortControllerRef = useRef(null);
             const [activeGeminiModel, setActiveGeminiModel] = useState('');
+            const [promptTemplate, setPromptTemplate] = useState('');
+            const [isSavingTemplate, setIsSavingTemplate] = useState(false);
             
             // --- 學生名單收放狀態 ---
             const [isStudentListCollapsed, setIsStudentListCollapsed] = useState(false);
@@ -253,13 +255,17 @@
                         const parsed = {}, finals = {};
                         Object.entries(comments).forEach(([id, d]) => {
                             if (d && typeof d === 'object') {
-                                parsed[id] = { gen1: d.gen1 || '', gen2: d.gen2 || '', gen3: d.gen3 || '' };
+                                parsed[id] = { preamble: '', gen1: d.gen1 || '', gen2: d.gen2 || '', gen3: d.gen3 || '' };
                                 if (d.final) finals[id] = d.final;
                             }
                         });
                         setParsedGenComments(prev => ({ ...prev, ...parsed }));
                         setFinalComments(prev => ({ ...prev, ...finals }));
                     }
+                    try {
+                        const tmpl = await callGAS({ action: 'getPromptTemplate' });
+                        if (tmpl) setPromptTemplate(tmpl);
+                    } catch(e) { /* 無提示詞工作表時忽略 */ }
                 } catch (err) {
                     setSheetLoadStatus('連結失敗：' + err.message);
                     setSheetConnected(false);
@@ -285,27 +291,33 @@
                 }
             };
 
-            // --- 解析 Gemini 輸出成三則 ---
+            // --- 解析 Gemini 輸出成三則（含引言）---
             const parseThreeComments = (text) => {
-                if (!text) return ['', '', ''];
-                // 嘗試按中文序號分割（評語一/二/三 或 則一/二/三）
-                let parts = text.split(/\n?\s*(?:\*\*)?(?:評語|則)[一二三](?:：|:)?(?:\*\*)?\s*\n?/);
-                if (parts.length >= 4) return [parts[1]?.trim()||'', parts[2]?.trim()||'', parts[3]?.trim()||''];
-                // 嘗試阿拉伯數字分割
+                if (!text) return { preamble:'', gen1:'', gen2:'', gen3:'' };
+                // 去掉 Gemini 有時加的 **學生姓名：** 和分隔線
+                const strip = (s) => (s||'').replace(/\*{0,2}學生姓名[：:][^\n]*\*{0,2}\n?/g,'').replace(/^[-\s]*\n/m,'').trim();
+                let parts;
+                // 第X則評語 format（最常見）
+                parts = text.split(/\n?\s*\*{0,2}第[一二三]則評語[：:]\*{0,2}\s*\n?/);
+                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
+                // 評語一／則一 format
+                parts = text.split(/\n?\s*\*{0,2}(?:評語|則)[一二三][：:]?\*{0,2}\s*\n?/);
+                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
+                // 阿拉伯數字
                 parts = text.split(/\n\s*[（(]?[1-3][）).、]\s*/);
-                if (parts.length >= 4) return [parts[1]?.trim()||'', parts[2]?.trim()||'', parts[3]?.trim()||''];
-                // 嘗試段落分割（兩個以上空行）
-                const paras = text.trim().split(/\n{2,}/).filter(p => p.trim());
-                if (paras.length >= 3) return [paras[0]?.trim()||'', paras[1]?.trim()||'', paras[2]?.trim()||''];
-                return [text.trim(), '', ''];
+                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
+                // 段落
+                const paras = text.trim().split(/\n{2,}/).filter(p=>p.trim());
+                if (paras.length >= 3) return { preamble:'', gen1:paras[0]?.trim()||'', gen2:paras[1]?.trim()||'', gen3:paras[2]?.trim()||'' };
+                return { preamble:'', gen1:text.trim(), gen2:'', gen3:'' };
             };
 
             const saveCommentToSheet = async (studentId, rawComment) => {
                 if (!gasUrl.trim()) return;
                 const student = students.find(s => s.id === studentId);
                 if (!student) return;
-                const [gen1, gen2, gen3] = parseThreeComments(rawComment);
-                setParsedGenComments(prev => ({ ...prev, [studentId]: { gen1, gen2, gen3 } }));
+                const { preamble, gen1, gen2, gen3 } = parseThreeComments(rawComment);
+                setParsedGenComments(prev => ({ ...prev, [studentId]: { preamble, gen1, gen2, gen3 } }));
                 try {
                     await callGAS({
                         action: 'saveComment',
@@ -318,6 +330,19 @@
                     alert('3 則評語已儲存至 Google Sheets！');
                 } catch (err) {
                     alert('儲存失敗：' + err.message);
+                }
+            };
+
+            const savePromptTemplateToSheet = async (tmpl) => {
+                if (!gasUrl.trim()) { alert('請先連結 Google Sheets'); return; }
+                setIsSavingTemplate(true);
+                try {
+                    await callGAS({ action: 'savePromptTemplate', template: encodeURIComponent(tmpl) });
+                    alert('提示詞已儲存至試算表「提示詞」工作表！');
+                } catch(err) {
+                    alert('儲存失敗：' + err.message);
+                } finally {
+                    setIsSavingTemplate(false);
                 }
             };
 
@@ -511,20 +536,7 @@
                     return results.length > 0 ? results.join('\n') : "尚未匯入此階段成績。";
                 };
 
-                return `你是一位資深且充滿教育熱忱的國民小學班級導師。我將提供班上學生的「性格特質標籤」、「成績表現」、「希望的評語風格」以及「字數限制」。請你根據這些資訊，綜合分析學生的特點，為每位學生撰寫 3 則期末評語供我參考。請確保評語內容具體、語氣通順，並能給予學生適當的鼓勵或建議。
-
-【學生背景】
-座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
-性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}
-
-【學業成就分析 (含自動計算之全班分項排名)】
-※ 格式：分數 (第X名) 表示該學生在該分項（如國習、聽寫）的表現位階。
-
-(1) 期中考階段表現：
-${formatPeriod('midterm')}
-
-(2) 期末考階段表現：
-${formatPeriod('final')}
+                const defaultInstruction = `你是一位資深且充滿教育熱忱的國民小學班級導師。請根據以下學生資料，為學生撰寫 3 則期末評語。請確保評語內容具體、語氣通順，並給予學生適當的鼓勵或建議。
 
 【撰寫指南】
 1. 風格要求：${combinedStyle || '正向積極、溫暖細緻'}
@@ -532,7 +544,37 @@ ${formatPeriod('final')}
 3. 參考範本：${styleConfig.customStyle || '無'}
 4. 分析重點：請分析「分項排名」的趨勢，但不要提到真正的名次，並盡量給予具體肯定。
 
-請生成 3 則期末評語。`.trim();
+請直接輸出三則評語，格式如下（不需要其他開頭說明）：
+評語一：
+[評語內容]
+
+評語二：
+[評語內容]
+
+評語三：
+[評語內容]`;
+
+                const instruction = promptTemplate
+                    ? promptTemplate
+                        .replace(/\{\{風格\}\}/g, combinedStyle || '正向積極、溫暖細緻')
+                        .replace(/\{\{字數\}\}/g, styleConfig.wordLimit)
+                        .replace(/\{\{範本\}\}/g, styleConfig.customStyle || '無')
+                    : defaultInstruction;
+
+                return `${instruction}
+
+【學生背景】
+座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
+性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}
+
+【學業成就分析 (含自動計算之全班分項排名)】
+※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
+
+(1) 期中考階段表現：
+${formatPeriod('midterm')}
+
+(2) 期末考階段表現：
+${formatPeriod('final')}`.trim();
             };
 
             const copyToClipboard = (text) => {
@@ -1372,6 +1414,51 @@ ${formatPeriod('final')}
                                                         {getFullPrompt(currentStudent)}
                                                     </div>
                                                     
+                                                    {/* 提示詞範本編輯器 */}
+                                                    <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 shadow-sm space-y-3">
+                                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                                            <h4 className="text-base font-bold text-amber-800 flex items-center gap-2">
+                                                                📝 自訂提示詞範本
+                                                            </h4>
+                                                            <div className="flex gap-2 flex-wrap">
+                                                                {gasUrl && (
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            try { const t = await callGAS({ action:'getPromptTemplate' }); setPromptTemplate(t || ''); alert(t ? '已從試算表載入提示詞！' : '試算表尚無提示詞，顯示預設。'); }
+                                                                            catch(e) { alert('載入失敗：' + e.message); }
+                                                                        }}
+                                                                        className="px-3 py-1.5 bg-amber-100 text-amber-700 border border-amber-300 rounded-lg text-xs font-bold hover:bg-amber-200 transition-all"
+                                                                    >
+                                                                        從試算表載入
+                                                                    </button>
+                                                                )}
+                                                                {gasUrl && (
+                                                                    <button
+                                                                        onClick={() => savePromptTemplateToSheet(promptTemplate)}
+                                                                        disabled={isSavingTemplate}
+                                                                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-all"
+                                                                    >
+                                                                        {isSavingTemplate ? '儲存中...' : '💾 儲存至試算表'}
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => setPromptTemplate('')}
+                                                                    className="px-3 py-1.5 bg-white border border-amber-300 text-amber-600 rounded-lg text-xs font-bold hover:bg-amber-50 transition-all"
+                                                                >
+                                                                    重設為預設
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-amber-600">可用變數：<code className="bg-amber-100 px-1 rounded">{'{{風格}}'}</code>、<code className="bg-amber-100 px-1 rounded">{'{{字數}}'}</code>、<code className="bg-amber-100 px-1 rounded">{'{{範本}}'}</code>。留空則使用預設。學生成績與背景資料固定接在下方。</p>
+                                                        <textarea
+                                                            value={promptTemplate}
+                                                            onChange={(e) => setPromptTemplate(e.target.value)}
+                                                            className="w-full p-3 rounded-xl border border-amber-300 text-sm font-mono leading-relaxed outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                                                            style={{minHeight: 160}}
+                                                            placeholder={`（留空使用預設）預設範本：\n你是一位資深且充滿教育熱忱的國民小學班級導師。請根據以下學生資料撰寫 3 則期末評語。\n\n【撰寫指南】\n1. 風格要求：{{風格}}\n2. 字數限制：每則約 {{字數}} 字\n...\n\n評語一：\n評語二：\n評語三：`}
+                                                        />
+                                                    </div>
+
                                                     {/* Gemini 生成評語區域 */}
                                                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl p-6 shadow-sm">
                                                         <div className="flex items-center justify-between mb-4">
@@ -1536,6 +1623,13 @@ ${formatPeriod('final')}
                                                         <button onClick={goToNextStudent} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 font-bold text-sm transition-all">下一位 →</button>
                                                     </div>
                                                 </div>
+
+                                                {/* 引言 */}
+                                                {parsedGenComments[currentStudent.id]?.preamble && (
+                                                    <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4 text-sm text-purple-800 leading-relaxed italic">
+                                                        {parsedGenComments[currentStudent.id].preamble}
+                                                    </div>
+                                                )}
 
                                                 {/* 三則生成評語 */}
                                                 {[1,2,3].map(n => {

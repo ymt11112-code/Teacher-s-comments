@@ -65,6 +65,11 @@ function doGet(e) {
         );
         result = { ok:true };
       }
+      else if (action === 'getPromptTemplate') result = { ok:true, data: getPromptTemplate(ss) };
+      else if (action === 'savePromptTemplate') {
+        savePromptTemplate(ss, decodeURIComponent(e.parameter.template || ''));
+        result = { ok:true };
+      }
       else result = { ok:false, error:'未知的 action' };
     }
   } catch(err) {
@@ -204,6 +209,23 @@ function createTemplate() {
   ['Sheet1','工作表1'].forEach(n => { try { ss.deleteSheet(ss.getSheetByName(n)); } catch(e) {} });
 
   return ss.getUrl();
+}
+
+// ── 提示詞範本（儲存在「提示詞」工作表 A1）──────────────────
+function getPromptTemplate(ss) {
+  const sheet = ss.getSheetByName('提示詞');
+  if (!sheet) return '';
+  const val = sheet.getRange(1, 1).getValue();
+  return val ? val.toString() : '';
+}
+
+function savePromptTemplate(ss, template) {
+  let sheet = ss.getSheetByName('提示詞');
+  if (!sheet) {
+    sheet = ss.insertSheet('提示詞');
+    sheet.setColumnWidth(1, 800);
+  }
+  sheet.getRange(1, 1).setValue(template);
 }
 
 // ── 儲存正式評語（只更新 G 欄）────────────────────────────
