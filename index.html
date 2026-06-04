@@ -615,10 +615,18 @@
                 if (promptTemplate) {
                     // 將 Google Sheets 模板中的欄位填入實際學生資料
                     const subs = ['國語','數學','社會','自然'];
+                    const actualStyle = combinedStyle || '正向積極、溫暖細緻';
+                    const actualWordLimit = `每則約 ${styleConfig.wordLimit} 字`;
+                    const actualExample = styleConfig.customStyle || '無';
                     let result = promptTemplate
-                        .replace(/\{\{風格\}\}/g, combinedStyle || '正向積極、溫暖細緻')
-                        .replace(/\{\{字數\}\}/g, styleConfig.wordLimit)
-                        .replace(/\{\{範本\}\}/g, styleConfig.customStyle || '無')
+                        // {{}} 佔位符
+                        .replace(/\{\{風格\}\}/g, actualStyle)
+                        .replace(/\{\{字數\}\}/g, actualWordLimit)
+                        .replace(/\{\{範本\}\}/g, actualExample)
+                        // 「讀取風格設定頁籤的 XXX」描述式佔位符
+                        .replace(/讀取風格設定頁籤的[\s　]*全域語氣風格/g, actualStyle)
+                        .replace(/讀取風格設定頁籤的[\s　]*評語目標字數/g, actualWordLimit)
+                        .replace(/讀取風格設定頁籤的[\s　]*參考範本/g, actualExample)
                         // 填入學生基本資料（配對「欄位名稱：」後方的空白行）
                         .replace(/(座號[：:])[ \t]*(?=\n|$)/gm,
                             `$1${student.id}`)
