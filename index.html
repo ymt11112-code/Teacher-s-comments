@@ -112,6 +112,13 @@
             const [finalComments, setFinalComments] = useState({});
             const [saveStatus, setSaveStatus] = useState({});
 
+            // --- 頁面載入時若已有網址，自動連線 ---
+            useEffect(() => {
+                if (gasUrl.trim() && sheetUrl.trim()) {
+                    connectToSheet();
+                }
+            }, []);
+
             // --- 切換到成績頁籤時自動讀取 ---
             useEffect(() => {
                 if (activeTab === 'scores' && gasUrl.trim() && sheetUrl.trim() && !scoresLoaded && !isLoadingSheet) {
@@ -533,7 +540,7 @@
                     const results = ['國語', '數學', '社會', '自然']
                         .map(sub => formatScoreToChinese(student.id, period, sub))
                         .filter(res => res);
-                    return results.length > 0 ? results.join('\n') : "尚未匯入此階段成績。";
+                    return results.length > 0 ? results.join('\n') : null;
                 };
 
                 const defaultInstruction = `你是一位資深且充滿教育熱忱的國民小學班級導師。請根據以下學生資料，為學生撰寫 3 則期末評語。請確保評語內容具體、語氣通順，並給予學生適當的鼓勵或建議。
@@ -561,6 +568,13 @@
                         .replace(/\{\{範本\}\}/g, styleConfig.customStyle || '無')
                     : defaultInstruction;
 
+                const midData = formatPeriod('midterm');
+                const finData = formatPeriod('final');
+                const scoreLines = [
+                    midData ? `(1) 期中考階段表現：\n${midData}` : null,
+                    finData ? `(2) 期末考階段表現：\n${finData}` : null,
+                ].filter(Boolean).join('\n\n') || '尚未匯入成績。';
+
                 return `${instruction}
 
 【學生背景】
@@ -570,11 +584,7 @@
 【學業成就分析 (含自動計算之全班分項排名)】
 ※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
 
-(1) 期中考階段表現：
-${formatPeriod('midterm')}
-
-(2) 期末考階段表現：
-${formatPeriod('final')}`.trim();
+${scoreLines}`.trim();
             };
 
             const copyToClipboard = (text) => {
