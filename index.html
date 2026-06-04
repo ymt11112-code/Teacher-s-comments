@@ -352,13 +352,18 @@
 
                 setIsSavingTemplate(true);
                 try {
-                    // 按段落切分成最多 4 份，分別存到 B1~B4
-                    const paras = tmpl.split(/\n{2,}/).filter(p => p.trim());
-                    const total = paras.length;
-                    const chunkSize = Math.ceil(total / 4);
-                    const parts = [0, 1, 2, 3].map(i =>
-                        paras.slice(i * chunkSize, (i + 1) * chunkSize).join('\n\n')
-                    );
+                    // 按固定段落標題分割，分別存到對應格子
+                    const sectionHeaders = ['【引言】', '【學生背景】', '【學業成就分析', '【撰寫指南】'];
+                    const sectionLabels  = ['B1(引言)', 'B2(學生背景)', 'B3(學業成就分析)', 'B4(撰寫指南)'];
+                    const positions = sectionHeaders.map(h => tmpl.indexOf(h));
+                    const parts = sectionHeaders.map((h, i) => {
+                        const start = positions[i];
+                        if (start === -1) return '';
+                        const nextStart = positions.slice(i + 1).filter(p => p > start).sort((a,b)=>a-b)[0];
+                        return nextStart !== undefined
+                            ? tmpl.slice(start, nextStart).trim()
+                            : tmpl.slice(start).trim();
+                    });
                     for (let i = 0; i < 4; i++) {
                         await callGAS({
                             action: 'savePromptCell',
@@ -366,7 +371,7 @@
                             value: encodeURIComponent(parts[i] || '')
                         });
                     }
-                    alert('提示詞已分別儲存至試算表 B1~B4！');
+                    alert('提示詞已儲存至試算表：\n' + sectionLabels.map((l,i) => `${l}：${parts[i] ? '✓' : '（空）'}`).join('\n'));
                 } catch(err) {
                     alert('儲存至試算表失敗：' + err.message + '\n\n提示詞已保留在瀏覽器中。');
                 } finally {
