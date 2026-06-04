@@ -578,7 +578,7 @@ ${formatPeriod('final')}
                 abortControllerRef.current = new AbortController();
 
                 try {
-                    // 查詢可用模型
+                    // 查詢可用模型清單
                     const listR = await fetch(
                         `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`,
                         { signal: abortControllerRef.current.signal }
@@ -588,41 +588,54 @@ ${formatPeriod('final')}
                         throw new Error(`查詢模型失敗 (HTTP ${listR.status})：${e.error?.message || '請確認 API Key 正確'}`);
                     }
                     const listData = await listR.json();
-                    const allModels = (listData.models || []).map(m => m.name.replace(/^models\//, ''));
                     const usable = (listData.models || []).filter(m =>
                         m.supportedGenerationMethods?.includes('generateContent') &&
                         /gemini/i.test(m.name) &&
                         !/vision|embedding|aqa/i.test(m.name)
                     );
-                    if (usable.length === 0) throw new Error(`查到 ${allModels.length} 個模型，但無一支援 generateContent：\n${allModels.join(', ')}`);
-
-                    const pick = usable.find(m => /2\.0-flash(?!.*lite)/i.test(m.name)) ||
-                                 usable.find(m => /2\.0/i.test(m.name)) ||
-                                 usable.find(m => /1\.5-flash/i.test(m.name)) ||
-                                 usable.find(m => /1\.5/i.test(m.name)) ||
-                                 usable[0];
-                    const modelId = pick.name.replace(/^models\//, '');
-                    setActiveGeminiModel(modelId);
-
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
-                    const r = await fetch(`${apiUrl}?key=${geminiApiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-                        signal: abortControllerRef.current.signal
-                    });
-                    if (!r.ok) {
-                        const errJson = await r.json();
-                        const msg = errJson.error?.message || `HTTP ${r.status}`;
-                        const retryMatch = msg.match(/retry in ([\d.]+)s/i);
-                        if (retryMatch) {
-                            setActiveGeminiModel('');
-                            throw new Error(`速率限制：請等待 ${Math.ceil(parseFloat(retryMatch[1]))} 秒後再試`);
-                        }
-                        setActiveGeminiModel('');
-                        throw new Error(`模型 ${modelId} 錯誤：${msg}`);
+                    if (usable.length === 0) {
+                        const all = (listData.models || []).map(m => m.name).join('\n');
+                        throw new Error(`找不到可用的 Gemini 模型。\n全部模型：\n${all}`);
                     }
-                    const response = r;
+
+                    // 依優先順序排列（1.5-flash 最穩定，2.0 次之）
+                    const sortedModels = [
+                        ...usable.filter(m => /1\.5-flash/i.test(m.name) && !/8b/i.test(m.name)),
+                        ...usable.filter(m => /1\.5-pro/i.test(m.name)),
+                        ...usable.filter(m => /2\.0-flash(?!.*lite)/i.test(m.name)),
+                        ...usable.filter(m => /2\.0/i.test(m.name)),
+                        ...usable.filter(m => !/1\.5|2\.0/i.test(m.name)),
+                    ];
+
+                    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
+                    const headers = { 'Content-Type': 'application/json' };
+                    const sig = abortControllerRef.current.signal;
+                    let response = null;
+                    const tryLog = [];
+
+                    outer: for (const model of sortedModels) {
+                        const mid = model.name.replace(/^models\//, '');
+                        for (const ver of ['v1', 'v1beta']) {
+                            const url = `https://generativelanguage.googleapis.com/${ver}/models/${mid}:generateContent?key=${geminiApiKey}`;
+                            const r = await fetch(url, { method: 'POST', headers, body, signal: sig });
+                            if (r.ok) {
+                                setActiveGeminiModel(`${mid} (${ver})`);
+                                response = r;
+                                break outer;
+                            }
+                            const errJson = await r.json().catch(() => ({}));
+                            const msg = (errJson.error?.message || `HTTP ${r.status}`).split('\n')[0];
+                            const retryMatch = msg.match(/retry in ([\d.]+)s/i);
+                            if (retryMatch) {
+                                const secs = Math.ceil(parseFloat(retryMatch[1]));
+                                tryLog.push(`❌ ${mid} (${ver}): 速率限制 (retry ${secs}s)`);
+                                // 速率限制就停止，不繼續試其他模型
+                                throw new Error(`速率限制：請等待 ${secs} 秒後再試\n\n已嘗試：\n${tryLog.join('\n')}`);
+                            }
+                            tryLog.push(`❌ ${mid} (${ver}): ${msg}`);
+                        }
+                    }
+                    if (!response) throw new Error(`所有模型均失敗：\n${tryLog.join('\n')}`);
 
                     if (!response.ok) {
                         const errorData = await response.json();
