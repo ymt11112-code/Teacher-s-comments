@@ -71,6 +71,8 @@
             const [extraTraits, setExtraTraits] = useState({});
             const [individualStyle, setIndividualStyle] = useState({});
             const [counselingData, setCounselingData] = useState({});
+            const [narrativeTraits, setNarrativeTraits] = useState({});
+            const [activeNarrativeTab, setActiveNarrativeTab] = useState('蛻變');
             
             const [selectedStudentId, setSelectedStudentId] = useState(null);
             const [traitSubTabs, setTraitSubTabs] = useState({
@@ -548,6 +550,117 @@
                 }
             };
 
+            const narrativeData = {
+                蛻變: [
+                    {t:"從浮躁走向沉穩",d:"過去心性較為浮躁，如今已能展現超乎年齡的定力。"},
+                    {t:"從被動轉為自律",d:"告別了過去需要催促的學習模式，現已建立良好的自律習慣。"},
+                    {t:"從羞澀蛻變勇敢",d:"昔日課堂上羞澀寡言，如今已能自信地舉手發表見解。"},
+                    {t:"從依賴邁向獨立",d:"減少了對師長的依賴，展現出獨立解決問題的雛形。"},
+                    {t:"從粗心走向細緻",d:"粗心大意的狀況明顯減少，作業書寫與訂正愈發嚴謹。"},
+                    {t:"學會了情緒調控",d:"過去容易受情緒左右，現在學會了先深呼吸、冷靜面對。"},
+                    {t:"同理心的覺醒",d:"從自我中心逐漸開闊，開始會站在同學的角度思考。"},
+                    {t:"規則意識的內化",d:"不再只是盲目遵守規範，而是真正理解並認同班級秩序。"},
+                    {t:"時間觀念的進步",d:"拖延常態大有改善，對日常作息的掌控度顯著提升。"},
+                    {t:"團隊融入度的提升",d:"從過去的獨來獨往，轉變為小組合作中不可或缺的成員。"},
+                    {t:"抗挫力的增強",d:"面對失敗或批評時，哭鬧減少了，取而代之的是反思。"},
+                    {t:"表達能力的躍升",d:"語句從片段支離，發展到能組織條理分明的長句敘述。"},
+                    {t:"閱讀深度的蛻變",d:"從喜愛圖畫書，成功過渡到能享受純文字的橋樑書與小說。"},
+                    {t:"專注時間的拉長",d:"課堂分心的頻率降低，能靜心聆聽核心概念的講解。"},
+                    {t:"生活自理的熟練",d:"個人座位與物品的收拾井然有序，不再丟三落四。"},
+                    {t:"對美感的敏銳度",d:"畫作或作品從童稚的塗鴉，演變為具備層次與和諧的呈現。"},
+                    {t:"體能與協調性",d:"運動技巧從生疏變得純熟，展現出良好的肢體爆發力。"},
+                    {t:"責任心的萌芽",d:"對於班級幹部或打掃勤務，從敷衍轉為認真負責。"},
+                    {t:"思維方式的轉變",d:"思考不再流於表面，開始能主動探尋「為什麼」。"},
+                    {t:"人際衝突的處理",d:"面對同儕爭執，從告狀抱怨轉為嘗試私下理性溝通。"},
+                    {t:"對榮譽感的重視",d:"內在驅動力被喚醒，開始追求個人與團體的優秀表現。"},
+                    {t:"聆聽習慣的養成",d:"逐漸改掉插嘴的習慣，懂得尊重並聽完他人的發言。"},
+                    {t:"對科技工具的運用",d:"數位學習能力進步神速，能善用載具進行資料搜集。"},
+                    {t:"作息自省能力",d:"能在聯絡簿或對話中，主動反省自己今日的學習進度。"},
+                    {t:"好奇心的延續",d:"保持了低年級的好奇，更增添了中年級的探索實踐力。"}
+                ],
+                現狀: [
+                    {t:"班級的安定力量",d:"課堂表現沉穩，是讓老師和同學都感到安心的存在。"},
+                    {t:"思維靈活的智多星",d:"頭腦運轉快速，總能在課堂討論中激盪出獨特火花。"},
+                    {t:"暖心的同儕守護者",d:"心思細膩，能敏銳察覺同學的需求並主動伸出援手。"},
+                    {t:"默默耕耘的實踐者",d:"話語不多，卻總是踏踏實實、高標準地完成每項任務。"},
+                    {t:"極具號召力的領頭羊",d:"具備天生的領導氣質，能帶領小組高效前進。"},
+                    {t:"求知若渴的探究者",d:"學習態度積極，對新知識總是充滿探索的熱情。"},
+                    {t:"充滿童心的樂觀派",d:"性格開朗，隨時散發正能量，是班上的開心果。"},
+                    {t:"一絲不苟的把關者",d:"對待細節要求嚴格，作業品質始終保持高水準。"},
+                    {t:"情感豐富的文藝青年",d:"在寫作、閱讀或藝術創作中展現出豐沛的情感。"},
+                    {t:"公正無私的仲裁者",d:"個性正直、原則性強，在同儕間極具公信力。"},
+                    {t:"溫和謙遜的聆聽者",d:"善於隱藏鋒芒，在團隊中是一位極佳的合作夥伴。"},
+                    {t:"活力充沛的運動健將",d:"操場上總能看到其矯健的身影，充滿陽光氣息。"},
+                    {t:"高情商的溝通達人",d:"說話得體、應對有據，與各類型的同學都能融洽相處。"},
+                    {t:"勇於發問的開拓者",d:"課堂上互動率極高，不畏懼出錯，勇於挑戰難題。"},
+                    {t:"內斂沉靜的思考家",d:"雖然發言不頻繁，但只要開口必定是深思熟慮的觀點。"},
+                    {t:"盡職負責的小幫手",d:"師長交辦的公務從不漏接，執行力百分之百。"},
+                    {t:"充滿創意的實踐家",d:"不拘泥於傳統框架，在手作或報告中總有新點子。"},
+                    {t:"愛惜羽毛的自律者",d:"極度注重個人信譽，承諾過的事情一定會做到。"},
+                    {t:"隨遇而安的彈性者",d:"面對環境或組別的變動，展現出極佳的適應力。"},
+                    {t:"直率坦誠的行動派",d:"心直口快、心思純粹，想到什麼就會立刻付諸行動。"},
+                    {t:"熱愛閱讀的書蟲",d:"下課時間常沉浸在書海中，知識面廣泛。"},
+                    {t:"善於觀察的隱形者",d:"觀察力敏銳，能注意到許多人容易忽略的班級細節。"},
+                    {t:"極具美感的小畫家",d:"對於色彩、線條有獨特天賦，聯絡簿插畫總令人驚艷。"},
+                    {t:"數理邏輯的解題者",d:"對數字與邏輯推理高度敏感，享受破案般的解題過程。"},
+                    {t:"重視承諾的守信者",d:"答應同儕的事情絕不食言，深受班級同學信任。"}
+                ],
+                閃光點: [
+                    {t:"持之以恆的毅力",d:"面對具有挑戰性的課業或任務時，不輕言放棄，願意反覆嘗試。"},
+                    {t:"貼心與同理心",d:"能敏銳察覺他人的情緒，在同學需要時主動給予安慰或實質幫助。"},
+                    {t:"獨立思考的火花",d:"課堂上不盲從同儕意見，勇於舉手分享自己獨特的想法。"},
+                    {t:"同儕間的熱心協調",d:"在小組合作中扮演溫和的潤滑劑，樂於傾聽並協助整合大家的想法。"},
+                    {t:"主動進取的自省力",d:"寫完作業或考卷後會主動檢視，並能根據老師的提醒迅速修正錯誤。"},
+                    {t:"豐富的具象表現力",d:"具備優秀的動手做能力，在美勞、海報設計或小組發表中展現獨特美感。"},
+                    {t:"條理分明的整理力",d:"善於將繁複的課文內容分類、抓出重點，個人筆記或課本重點標記清晰。"},
+                    {t:"臨危不亂的應變力",d:"面對課堂突發狀況能保持冷靜，主動尋求替代方案。"},
+                    {t:"純粹的求知熱情",d:"對新知識充滿純粹的好奇，學習是為了滿足自己的探索欲，而非單純追求分數。"},
+                    {t:"班級的幽默與活力",d:"性格開朗、富有幽默感，總能用正向積極的態度帶給周遭同學歡樂。"},
+                    {t:"自信流暢的口語表達",d:"站上講台時台風落落大方，能用清晰的口條將自己的想法完整傳達。"},
+                    {t:"高效率的靜心專注力",d:"一旦進入學習或書寫狀態，便能迅速沉浸其中，不受周遭環境干擾。"},
+                    {t:"數位工具應用素養",d:"善於操作數位載具，並能遵循規範，將其正確運用於資料搜集與學習上。"},
+                    {t:"知恩惜福的體貼",d:"對於師長的指導與父母的照顧常懷感謝，是個懂得珍惜、非常有禮貌的孩子。"},
+                    {t:"強烈的團隊榮譽感",d:"在小組或班級競賽中，願意為了團體表現而全力以赴，展現共好精神。"},
+                    {t:"踏實的計畫執行力",d:"只要分配到任務，就能按部就班、腳踏實地地落實，是個讓人放心的行動派。"},
+                    {t:"良好的作息掌控力",d:"能合理安排學校課業與課後休閒，作業多能如期、高品質地完成。"},
+                    {t:"敏銳的環境觀察力",d:"觀察細緻，總能注意到班級生活中的小細節並默默協助。"},
+                    {t:"不拘一格的創造力",d:"思考靈活，在科學小實驗或創意發想課中，常能提出令人驚艷的新點子。"},
+                    {t:"追求完美的匠人精神",d:"對於作業的字跡、作品的細節有高度要求，對自己的成果充滿責任感。"},
+                    {t:"熱心服務的公眾心",d:"對於班級幹部職責或打掃勤務充滿熱情，不推諉、不計較，樂於為大家服務。"},
+                    {t:"樂觀不服輸的韌性",d:"遇到挫折或成績不理想時，能迅速調適心情，用積極的笑容面對下一次挑戰。"},
+                    {t:"接納多元的包容力",d:"樂於和不同個性的同學相處，不排擠他人，具備開闊的交友胸襟。"},
+                    {t:"出色的肢體協調與運動家精神",d:"在體育課或體能競技中表現亮眼，且能遵守規則、勝不驕敗不餒。"},
+                    {t:"情感真摯的文字敘事力",d:"小日記或作文情感流露自然，能用生動的文字記錄生活，感染力十足。"}
+                ],
+                期許: [
+                    {t:"解鎖「放眼大局」的胸懷",d:"期許高年級能跳脫個人視角，試著從班級整體的角度思考。"},
+                    {t:"修煉「溫和堅定」的藝術",d:"建議在高年級學習包容不同聲音，讓直率的言詞更有溫度。"},
+                    {t:"升級「深度思考」的濾鏡",d:"鼓勵在面對複雜議題時多問幾個為什麼，別急著下定論。"},
+                    {t:"挑戰「走出舒適圈」的勇氣",d:"期待你在高年級能勇敢接下未曾嘗試過的角色或職務。"},
+                    {t:"啟動「時間微調」的時鐘",d:"建議提早做好高年級課業加深的準備，更精準分配時間。"},
+                    {t:"鍛鍊「抗干擾」的專注定力",d:"期待你學會在嘈雜的環境中，依然能保有內心的平靜與專注。"},
+                    {t:"練習「容許不完美」的彈性",d:"提醒自己盡力就好，學會與挫折握手言和，心境會更開闊。"},
+                    {t:"培養「主動發光」的自信",d:"你的實力很強，高年級請勇敢舉手，讓世界看見你的才華。"},
+                    {t:"深化「系統性筆記」的習慣",d:"面對高年級繁重的學科，試著用課堂筆記來建構知識地圖。"},
+                    {t:"落實「事必歸位」的自理力",d:"期待你在高年級能更細心地管理個人物品，不再遺忘。"},
+                    {t:"學習「隱藏鋒芒」的謙遜",d:"期待你在展現天賦之餘，也能學會托舉、讚美身邊的同學。"},
+                    {t:"加強「情緒緩衝」的剎車",d:"遇到不順心時，試著冷靜後再做回應，避免衝動。"},
+                    {t:"提升「跨領域」的閱讀廣度",d:"除了喜愛的類型，高年級可以多涉獵科普與歷史讀物。"},
+                    {t:"突破「依賴指令」的框架",d:"期待你不再等老師口令，而是主動觀察「現在自己該做什麼」。"},
+                    {t:"精進「小組引導」的領導力",d:"優秀的領導者不只是自己做，更要學會如何適才適用、分工。"},
+                    {t:"養成「當日事當日畢」的堅持",d:"面對高年級更長的作業，維持不拖延的節奏是關鍵。"},
+                    {t:"鍛鍊「自我查核」的嚴謹度",d:"寫完考卷或作業後，留三分鐘自主檢查，能避免遺憾。"},
+                    {t:"建立「健康正向」的3C觀念",d:"隨著載具使用增加，期許你能成為數位工具的主人而非奴隸。"},
+                    {t:"展現「擇善固執」的道德勇氣",d:"面對同儕間的不良風氣，期待你能勇敢堅守正道。"},
+                    {t:"擴大「交友圈」的心理彈性",d:"試著多跟不同特質的同學交流，你會發現每個人都有亮點。"},
+                    {t:"強化「口語組織」的邏輯",d:"表達時試著用「第一、第二、第三」來讓發言更具說服力。"},
+                    {t:"培養「深度聆聽」的修養",d:"學習在別人發言時全神貫注，這是高年級人際關係的基石。"},
+                    {t:"解鎖「自主規劃」的長假",d:"試著在未來的假期中，自己擬定一份學習與娛樂兼顧的計畫。"},
+                    {t:"修復「受挫即放棄」的心態",d:"把每一次的失敗當作升級的經驗值，高年級的課業需要這種韌性。"},
+                    {t:"保持「赤子之心」與前行",d:"願你帶著中年級的純真與熱情，勇敢解鎖五、六年級的全新挑戰。"}
+                ]
+            };
+
             const toggleTrait = (studentId, category, trait) => {
                 setTraits(prev => {
                     const studentTraits = prev[studentId] || { personality: [], learning: [], attitude: [], social: [] };
@@ -559,8 +672,18 @@
                 });
             };
 
+            const toggleNarrativeTrait = (studentId, category, title) => {
+                setNarrativeTraits(prev => {
+                    const catArr = prev[studentId]?.[category] || [];
+                    const newCat = catArr.includes(title)
+                        ? catArr.filter(t => t !== title)
+                        : [...catArr, title];
+                    return { ...prev, [studentId]: { ...(prev[studentId] || {}), [category]: newCat } };
+                });
+            };
+
             const currentStudent = students.find(s => s.id === selectedStudentId);
-            
+
             // --- 獲取學生已選特質 ---
             const getStudentSelectedTraits = (studentId) => {
                 if (!studentId) return [];
@@ -596,6 +719,11 @@
                     const newData = { ...prev };
                     delete newData[studentId];
                     return newData;
+                });
+                setNarrativeTraits(prev => {
+                    const n = { ...prev };
+                    delete n[studentId];
+                    return n;
                 });
             };
             
@@ -638,6 +766,9 @@
                 }
                 // 檢查是否有補充特質或個別風格
                 if (extraTraits[studentId] || individualStyle[studentId]) return true;
+                // 檢查敘事特質
+                const nt = narrativeTraits[studentId];
+                if (nt && Object.values(nt).some(a => Array.isArray(a) && a.length > 0)) return true;
                 return false;
             };
 
@@ -743,6 +874,13 @@
                 const manualTraits = extraTraits[student.id] ? extraTraits[student.id].split(/[，、\s]+/) : [];
                 const finalTraits = [...allSelected, ...manualTraits].filter(t => t);
                 const counselNote = (counselingData[student.id] || '').trim();
+                const sNarrative = narrativeTraits[student.id] || {};
+                const narrativeLines = ['蛻變','現狀','閃光點','期許'].flatMap(cat =>
+                    (sNarrative[cat] || []).map(title => {
+                        const item = (narrativeData[cat] || []).find(x => x.t === title);
+                        return item ? `【${cat}】${item.t}：${item.d}` : `【${cat}】${title}`;
+                    })
+                );
                 const combinedStyle = [...styleConfig.selectedStyles, individualStyle[student.id] ? `(特別要求：${individualStyle[student.id]})` : ''].filter(s => s).join('、');
 
                 const scoreData = scores[student.id] || { midterm: {}, final: {} };
@@ -831,6 +969,9 @@
                     if (!finData) {
                         result = result.trimEnd() + '\n\n⚠️ 重要：本次只有期中成績，沒有期末成績資料。撰寫評語時請勿假設、推測或提及期末考的表現，只根據期中成績描述。';
                     }
+                    if (narrativeLines.length > 0) {
+                        result += `\n\n📝 敘事觀察（供 AI 撰寫時參考，勿逐字複製）：\n${narrativeLines.join('\n')}`;
+                    }
                     if (counselNote) {
                         result += `\n\n📋 輔導觀察備忘（教師私下備注，請作為背景參考，勿直接引用）：\n${counselNote}`;
                     }
@@ -848,7 +989,7 @@
 
 【學生背景】
 座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
-性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}${counselNote ? `\n輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
+性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}${narrativeLines.length > 0 ? `\n敘事觀察：\n${narrativeLines.join('\n')}` : ''}${counselNote ? `\n輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
 
 【學業成就分析 (含自動計算之全班分項排名)】
 ※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
@@ -1532,6 +1673,55 @@ ${scoreLines}${noFinalNote}`.trim();
                                                             );
                                                         })}
                                                     </div>
+                                                    {/* 敘事特質選擇 */}
+                                                    <div className="bg-amber-50 p-4 rounded-2xl border-2 border-amber-200 space-y-3">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-base font-bold text-amber-700">✨ 敘事觀察</span>
+                                                            <span className="text-xs font-normal text-amber-500">（選取後將納入提示詞供 AI 參考）</span>
+                                                        </div>
+                                                        {/* 已選標籤 */}
+                                                        {(() => {
+                                                            const allSel = ['蛻變','現狀','閃光點','期許'].flatMap(cat =>
+                                                                (narrativeTraits[selectedStudentId]?.[cat] || []).map(t => ({ cat, t }))
+                                                            );
+                                                            return allSel.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {allSel.map(({ cat, t }) => (
+                                                                        <span key={cat+t} className="inline-flex items-center gap-1 bg-amber-200 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full">
+                                                                            <span className="text-amber-500">[{cat}]</span>{t}
+                                                                            <button onClick={() => toggleNarrativeTrait(selectedStudentId, cat, t)} className="ml-0.5 text-amber-600 hover:text-red-600 font-bold leading-none">×</button>
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : null;
+                                                        })()}
+                                                        {/* Tab 切換 */}
+                                                        <div className="flex gap-1.5 flex-wrap">
+                                                            {['蛻變','現狀','閃光點','期許'].map(cat => (
+                                                                <button key={cat}
+                                                                    onClick={() => setActiveNarrativeTab(cat)}
+                                                                    className={`px-3 py-1 text-xs font-bold rounded-lg border-2 transition-all ${activeNarrativeTab === cat ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-amber-300 text-amber-600 hover:bg-amber-100'}`}
+                                                                >{cat}</button>
+                                                            ))}
+                                                        </div>
+                                                        {/* 項目格子 */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                                                            {(narrativeData[activeNarrativeTab] || []).map(item => {
+                                                                const isNSel = (narrativeTraits[selectedStudentId]?.[activeNarrativeTab] || []).includes(item.t);
+                                                                return (
+                                                                    <button key={item.t}
+                                                                        onClick={() => toggleNarrativeTrait(selectedStudentId, activeNarrativeTab, item.t)}
+                                                                        title={item.d}
+                                                                        className={`text-left px-3 py-2 rounded-xl border-2 transition-all ${isNSel ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-amber-200 text-slate-700 hover:border-amber-400 hover:bg-amber-50'}`}
+                                                                    >
+                                                                        <div className={`text-xs font-bold leading-tight ${isNSel ? 'text-white' : 'text-slate-800'}`}>{item.t}</div>
+                                                                        <div className={`text-[10px] leading-snug mt-0.5 line-clamp-1 ${isNSel ? 'text-amber-100' : 'text-slate-400'}`}>{item.d}</div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
                                                     <div className="bg-blue-50 p-5 rounded-2xl space-y-3 border-2 border-blue-200">
                                                         <div>
                                                             <label className="text-base font-bold text-blue-700 flex items-center gap-2">
