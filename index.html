@@ -120,6 +120,7 @@
             const [parsedGenComments, setParsedGenComments] = useState({});
             const [finalComments, setFinalComments] = useState({});
             const [saveStatus, setSaveStatus] = useState({});
+            const [trafficLights, setTrafficLights] = useState({});
 
             // --- 頁面載入時若已有網址，自動連線 ---
             useEffect(() => {
@@ -670,6 +671,44 @@
                 ]
             };
 
+            const trafficLightData = [
+                { id:'1', name:'學習態度', subs:[
+                    { id:'1-1', name:'動機',      green:['求知若渴','積極探究','樂於挑戰','眼神發亮','熱愛學習'], yellow:['配合進度','按部就班','順從教學','表現平穩','動機尚可'], red:['被動消極','畏難退縮','興趣缺缺','依賴獎勵','逃避學習'] },
+                    { id:'1-2', name:'主動性',    green:['積極嘗試','主動發問','自動自發','擴充所學','求學認真'], yellow:['需人提醒','願意嘗試','交代方做','常規落實','配合度佳'], red:['依賴催促','慣性拖延','消極應付','鮮少提問','被動等待'] },
+                    { id:'1-3', name:'自我要求',  green:['精益求精','自律甚嚴','主動訂正','重視品質','追求卓越'], yellow:['符合標準','量力而為','配合更正','守成穩定','缺乏突破'], red:['敷衍了事','得過且過','草率完成','品質不穩','缺乏上進'] },
+                    { id:'1-4', name:'課堂參與',  green:['積極回應','互動熱烈','勤做筆記','高度專注','思維活躍'], yellow:['安靜聽講','常規良好','偶爾回應','配合要求','中規中矩'], red:['分心晃神','參與不足','精神渙散','毫無反應','游離課外'] },
+                    { id:'1-5', name:'挫折耐受',  green:['成長思維','持續修正','越挫越勇','調適迅速','勇於面對'], yellow:['需要安慰','尚能堅持','能受指正','偶有氣餒','步伐平穩'], red:['定型思維','容易退縮','拒絕嘗試','逃避挑戰','害怕犯錯'] },
+                ]},
+                { id:'2', name:'學習狀況', subs:[
+                    { id:'2-1', name:'基礎能力',  green:['領悟力強','資質聰穎','思維敏捷','展現潛質','數理較強'], yellow:['理解尚可','記憶尚可','能力中上','學科平衡','符合標準'], red:['理解遲緩','概念模糊','開竅較慢','學習吃力','需多引導'] },
+                    { id:'2-2', name:'學習成果',  green:['融會貫通','字跡工整','力圖上進','成績優異','表現亮眼'], yellow:['稍有起伏','按時繳交','掌握基礎','符合要求','漸入佳境'], red:['成績落後','經常遲交','字跡潦草','尚待努力','成績下滑'] },
+                    { id:'2-3', name:'課堂互動',  green:['大方發表','討論投入','專心聽講','對答流暢','具啟發性'], yellow:['被動應答','禮貌配合','點名回應','表達平順','中規中矩'], red:['過度緊張','語無倫次','極度退縮','答非所問','拒絕發言'] },
+                    { id:'2-4', name:'問題解決',  green:['獨立思考','推理清晰','邏輯縝密','隨時修正','應變極佳'], yellow:['依循常軌','尚須引導','求助師長','方法單一','尚能完成'], red:['腦筋打結','手足無措','直接放棄','依賴答案','拒絕思考'] },
+                    { id:'2-5', name:'多元能力',  green:['應變能力','好奇心強','富創造力','文采斐然','服務熱心'], yellow:['邏輯智慧','美感設計','體能展現','自然觀察','實作能力'], red:['抗拒實作','協調欠佳','思維僵化','意願低落','參與被動'] },
+                ]},
+                { id:'3', name:'個性品德', subs:[
+                    { id:'3-1', name:'成熟度',    green:['言行一致','自律穩健','盡心負責','處事得體','深得信賴'], yellow:['遵守規定','尚能負責','配合約束','偶有小錯','提醒能改'], red:['幼稚任性','明知故犯','定性不足','判斷力差','承擔不足'] },
+                    { id:'3-2', name:'行動力',    green:['主動俐落','效率良好','實踐力佳','任務到位','積極務實'], yellow:['仍須提醒','節奏平穩','聽令推進','不拖不欠','按部就班'], red:['嚴重拖延','遲遲未動','執行鬆散','被動催促','效率偏低'] },
+                    { id:'3-3', name:'情緒調節',  green:['情緒平穩','心境樂觀','自我安撫','理智表達','情商極高'], yellow:['晴時多雲','配合引導','順從規勸','情緒內斂','適應力可'], red:['情緒翻湧','容易低落','防衛心強','易流眼淚','衝動言行'] },
+                    { id:'3-4', name:'自我認同',  green:['充滿自信','落落大方','接納自我','不盲同儕','優勢清楚'], yellow:['信心合宜','自尊健全','接受鼓勵','偶有猶豫','狀態穩妥'], red:['自卑退縮','自信薄弱','否定自我','迎合同儕','缺乏主見'] },
+                    { id:'3-5', name:'反省覺察',  green:['能夠自省','虛心受教','自我覺察','迅速修正','具反思力'], yellow:['點撥能懂','知錯能改','反省被動','覺察漸明','配合微調'], red:['執迷不悟','怨天尤人','毫無自覺','重蹈覆轍','拒絕認錯'] },
+                ]},
+                { id:'4', name:'團體人際', subs:[
+                    { id:'4-1', name:'團體角色',  green:['領導力佳','協調力好','積極貢獻','凝聚團隊','服務熱心'], yellow:['配合度佳','安分守己','善盡本分','團隊螺絲','不爭不搶'], red:['邊緣孤立','破壞和諧','冷眼旁觀','攪局添亂','社交游離'] },
+                    { id:'4-2', name:'應對進退',  green:['彬彬有禮','大方問好','知書達禮','言語溫和','舉止得體'], yellow:['基本禮貌','中規中矩','不失禮節','應對平順','質樸大方'], red:['態度傲慢','言詞粗魯','頂撞師長','冒失無理','任性妄為'] },
+                    { id:'4-3', name:'同理關懷',  green:['觀察敏銳','主動關照','熱心助人','體貼入微','暖心助人'], yellow:['保持友善','良善純樸','和睦相處','願意協助','心思平和'], red:['待人冷漠','體貼不足','漠不關心','言詞帶刺','缺乏同理'] },
+                    { id:'4-4', name:'社交適應',  green:['廣受歡迎','融入各群','互動開朗','友伴穩定','協作流暢'], yellow:['玩伴固定','相處融洽','參與遊戲','互動慢熱','衝突極少'], red:['人際疏離','孤立排他','同儕投訴','適應不良','配合不足'] },
+                    { id:'4-5', name:'衝突處理',  green:['理性協商','願意讓步','釐清誤會','雅量包容','高情商解'], yellow:['尋求師長','配合調解','情勢可控','大致和平','不擴事態'], red:['爭執升高','言語還擊','情緒主導','斤斤計較','誤會延伸'] },
+                ]},
+                { id:'5', name:'日常生活', subs:[
+                    { id:'5-1', name:'公共責任',  green:['盡心盡責','服務主動','愛惜公物','守規自覺','責任感強'], yellow:['配合班務','配合輪值','不壞公物','基本公德','按部就班'], red:['偷懶躲藏','敷衍了事','不願配合','服務被動','推卸職責'] },
+                    { id:'5-2', name:'作息精神',  green:['準時到校','神清氣爽','精神飽滿','珍惜時間','效率卓越'], yellow:['作息正常','尚能專注','午休安靜','偶而遲到','不拖進度'], red:['遲到嚴重','哈欠連連','精神萎靡','慢條斯理','拖到最後'] },
+                    { id:'5-3', name:'自理能力',  green:['井然有序','妥善保管','迅速收拾','生活獨立','物歸原處'], yellow:['東西偶丟','基本整潔','掌控得宜','自理正常','尚能收拾'], red:['找東找西','雜亂無章','物品凌亂','高度依賴','丟三落四'] },
+                    { id:'5-4', name:'幹部表現',  green:['公正無私','盡忠職守','主動協助','言行表率','步調極穩'], yellow:['中規中矩','配合指令','職責尚可','偶需提點','被動執行'], red:['敷衍塞責','濫用職權','同學反彈','常規不彰','不負責任'] },
+                    { id:'5-5', name:'生活禮儀',  green:['彬彬有禮','長幼有序','輕聲細語','坐立有相','舉止得體'], yellow:['基本禮貌','中規中矩','不失禮節','應對平順','常態禮儀'], red:['大聲喧嘩','推擠插隊','勾肩搭背','衣冠不整','冒失無禮'] },
+                ]},
+            ];
+
             const toggleTrait = (studentId, category, trait) => {
                 setTraits(prev => {
                     const studentTraits = prev[studentId] || { personality: [], learning: [], attitude: [], social: [] };
@@ -689,6 +728,29 @@
                         : [...catArr, title];
                     return { ...prev, [studentId]: { ...(prev[studentId] || {}), [category]: newCat } };
                 });
+            };
+
+            const toggleTrafficLight = (studentId, subId, color) => {
+                setTrafficLights(prev => {
+                    const s = prev[studentId] || {};
+                    return { ...prev, [studentId]: { ...s, [subId]: s[subId] === color ? null : color } };
+                });
+            };
+
+            const getTrafficLightText = (studentId) => {
+                const tl = trafficLights[studentId] || {};
+                const parts = [];
+                trafficLightData.forEach(dim => {
+                    const dimLines = [];
+                    dim.subs.forEach(sub => {
+                        const state = tl[sub.id];
+                        if (!state) return;
+                        const label = state === 'green' ? '值得肯定' : state === 'yellow' ? '表現中等' : '待改進';
+                        dimLines.push(`  ${sub.name}（${label}）：${sub[state].join('、')}`);
+                    });
+                    if (dimLines.length > 0) { parts.push(`▌${dim.name}`); parts.push(...dimLines); }
+                });
+                return parts.join('\n');
             };
 
             const currentStudent = students.find(s => s.id === selectedStudentId);
@@ -730,6 +792,11 @@
                     return newData;
                 });
                 setNarrativeTraits(prev => {
+                    const n = { ...prev };
+                    delete n[studentId];
+                    return n;
+                });
+                setTrafficLights(prev => {
                     const n = { ...prev };
                     delete n[studentId];
                     return n;
@@ -778,6 +845,8 @@
                 // 檢查敘事特質
                 const nt = narrativeTraits[studentId];
                 if (nt && Object.values(nt).some(a => Array.isArray(a) && a.length > 0)) return true;
+                // 檢查紅綠燈向度
+                if (Object.values(trafficLights[studentId] || {}).some(v => v)) return true;
                 return false;
             };
 
@@ -883,6 +952,7 @@
                 const manualTraits = extraTraits[student.id] ? extraTraits[student.id].split(/[，、\s]+/) : [];
                 const finalTraits = [...allSelected, ...manualTraits].filter(t => t);
                 const counselNote = (counselingData[student.id] || '').trim();
+                const tlText = getTrafficLightText(student.id);
                 const sNarrative = narrativeTraits[student.id] || {};
                 const narrativeLines = ['蛻變','現狀','閃光點','期許'].flatMap(cat =>
                     (sNarrative[cat] || []).map(title => {
@@ -978,6 +1048,9 @@
                     if (!finData) {
                         result = result.trimEnd() + '\n\n⚠️ 重要：本次只有期中成績，沒有期末成績資料。撰寫評語時請勿假設、推測或提及期末考的表現，只根據期中成績描述。';
                     }
+                    if (tlText) {
+                        result += `\n\n📊 學生觀察向度（紅綠燈評估，請據此描述，勿逐字複製）：\n${tlText}`;
+                    }
                     if (narrativeLines.length > 0) {
                         result += `\n\n📝 敘事觀察（供 AI 撰寫時參考，勿逐字複製）：\n${narrativeLines.join('\n')}`;
                     }
@@ -998,7 +1071,7 @@
 
 【學生背景】
 座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
-性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}${narrativeLines.length > 0 ? `\n敘事觀察：\n${narrativeLines.join('\n')}` : ''}${counselNote ? `\n輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
+性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}${tlText ? `\n\n📊 觀察向度（紅綠燈評估）：\n${tlText}` : ''}${narrativeLines.length > 0 ? `\n\n📝 敘事觀察：\n${narrativeLines.join('\n')}` : ''}${counselNote ? `\n\n📋 輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
 
 【學業成就分析 (含自動計算之全班分項排名)】
 ※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
@@ -1592,95 +1665,58 @@ ${scoreLines}${noFinalNote}`.trim();
                                                         </button>
                                                     </div>
                                                     
-                                                    {/* 顯示已選特質和清除按鈕 */}
+                                                    {/* 紅綠燈向度摘要 + 清除 */}
                                                     {(() => {
-                                                        const selectedTraits = getStudentSelectedTraits(selectedStudentId);
-                                                        return selectedTraits.length > 0 ? (
-                                                            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4">
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <span className="text-base font-bold text-indigo-700">已選特質：</span>
-                                                                    <button 
-                                                                        onClick={() => clearStudentTraits(selectedStudentId)}
-                                                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold text-sm transition-all"
-                                                                    >
-                                                                        清除重選
-                                                                    </button>
-                                                                </div>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {selectedTraits.map((trait, idx) => (
-                                                                        <span 
-                                                                            key={idx}
-                                                                            className="px-3 py-1.5 text-sm font-bold bg-indigo-600 text-white rounded-lg border-2 border-indigo-700 shadow-sm"
-                                                                        >
-                                                                            {trait}
-                                                                        </span>
-                                                                    ))}
+                                                        const tl = trafficLights[selectedStudentId] || {};
+                                                        const count = Object.values(tl).filter(v => v).length;
+                                                        if (count === 0) return null;
+                                                        return (
+                                                            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-3 flex items-center justify-between">
+                                                                <span className="text-sm font-bold text-indigo-700">已評 {count} / 25 個子向度</span>
+                                                                <button onClick={() => clearStudentTraits(selectedStudentId)} className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold text-xs transition-all">清除重設</button>
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {/* 紅綠燈五向度 */}
+                                                    <div className="space-y-3">
+                                                        {trafficLightData.map(dim => (
+                                                            <div key={dim.id} className="border-2 border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden">
+                                                                <div className="bg-indigo-600 text-white px-4 py-2 text-sm font-bold">{dim.id}. {dim.name}</div>
+                                                                <div className="divide-y divide-slate-100">
+                                                                    {dim.subs.map(sub => {
+                                                                        const sel = trafficLights[selectedStudentId]?.[sub.id] || null;
+                                                                        const cfg = {
+                                                                            green:  { rowBg:'bg-green-50',  txt:'text-green-800',  label:'🟢 值得肯定' },
+                                                                            yellow: { rowBg:'bg-yellow-50', txt:'text-yellow-800', label:'🟡 表現中等' },
+                                                                            red:    { rowBg:'bg-red-50',    txt:'text-red-800',    label:'🔴 待改進' },
+                                                                        };
+                                                                        const c = sel ? cfg[sel] : null;
+                                                                        return (
+                                                                            <div key={sub.id} className={`flex items-start gap-3 px-4 py-2.5 transition-colors ${c ? c.rowBg : ''}`}>
+                                                                                <span className="text-xs font-bold text-slate-500 w-16 shrink-0 pt-1">{sub.id} {sub.name}</span>
+                                                                                <div className="flex gap-2 shrink-0 pt-0.5">
+                                                                                    {['green','yellow','red'].map(color => {
+                                                                                        const emoji = color === 'green' ? '🟢' : color === 'yellow' ? '🟡' : '🔴';
+                                                                                        return (
+                                                                                            <button key={color} onClick={() => toggleTrafficLight(selectedStudentId, sub.id, color)}
+                                                                                                className={`w-7 h-7 rounded-full text-sm transition-all flex items-center justify-center border-2 ${sel === color ? 'border-slate-600 shadow scale-110' : 'border-transparent opacity-35 hover:opacity-70'}`}
+                                                                                                title={cfg[color].label}
+                                                                                            >{emoji}</button>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                                {sel && (
+                                                                                    <div className={`text-xs leading-relaxed flex-1 pt-0.5 ${c.txt}`}>
+                                                                                        <span className="font-bold">{cfg[sel].label}：</span>{sub[sel].join('、')}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
-                                                        ) : null;
-                                                    })()}
-                                                    
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {['attitude', 'social', 'personality', 'learning'].map(cat => {
-                                                            const traitsList = traitData[cat][traitSubTabs[cat]] || [];
-                                                            return (
-                                                                <div key={cat} className="border-2 p-4 rounded-xl bg-white shadow-sm">
-                                                                    <div className="flex justify-between items-center mb-3">
-                                                                        <span className="text-base font-bold text-slate-700">{cat === 'attitude' ? '態度' : cat === 'social' ? '人際' : cat === 'personality' ? '個性' : '學習'}</span>
-                                                                        <div className="flex gap-1.5">
-                                                                            {cat === 'personality' ? (
-                                                                                <>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: '甲'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === '甲' ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>甲</button>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: '乙'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === '乙' ? 'bg-yellow-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>乙</button>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: '丙'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === '丙' ? 'bg-orange-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>丙</button>
-                                                                                </>
-                                                                            ) : cat === 'learning' ? (
-                                                                                <>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: '優'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === '優' ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>優</button>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: '中下'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === '中下' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>中下</button>
-                                                                                </>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: 'good'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === 'good' ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>優</button>
-                                                                                    <button onClick={() => setTraitSubTabs(p => ({...p, [cat]: 'bad'}))} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${traitSubTabs[cat] === 'bad' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>待加強</button>
-                                                                                </>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="grid grid-cols-5 gap-1.5 mb-1">
-                                                                        {(colLabels[cat]?.[traitSubTabs[cat]] || []).map((label, ci) => (
-                                                                            <div key={ci} className={`text-center text-[10px] font-bold py-0.5 px-0.5 rounded-md transition-all select-none ${hoveredCols[cat] === ci ? 'text-indigo-700 bg-indigo-100' : 'text-slate-400'}`}>
-                                                                                {label}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                    <div className="grid grid-cols-5 gap-1.5">
-                                                                        {traitsList.map((t, idx) => {
-                                                                            const colIdx = idx % 5;
-                                                                            const isSelected = traits[selectedStudentId]?.[cat]?.includes(t);
-                                                                            const isColHovered = hoveredCols[cat] === colIdx;
-                                                                            return (
-                                                                                <button
-                                                                                    key={t}
-                                                                                    onClick={() => toggleTrait(selectedStudentId, cat, t)}
-                                                                                    onMouseEnter={() => setHoveredCols(prev => ({...prev, [cat]: colIdx}))}
-                                                                                    onMouseLeave={() => setHoveredCols(prev => ({...prev, [cat]: null}))}
-                                                                                    className={`py-1.5 px-1 text-xs font-bold rounded-lg border-2 transition-all text-center leading-tight ${
-                                                                                        isSelected
-                                                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md hover:bg-indigo-700'
-                                                                                            : isColHovered
-                                                                                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                                                                                                : 'bg-white border-slate-200 text-slate-700'
-                                                                                    }`}
-                                                                                >
-                                                                                    {t}
-                                                                                </button>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                        ))}
                                                     </div>
                                                     {/* 敘事特質選擇 */}
                                                     <div className="bg-amber-50 p-4 rounded-2xl border-2 border-amber-200 space-y-3">
