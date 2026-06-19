@@ -1698,10 +1698,6 @@ ${scoreLines}${noFinalNote}`.trim();
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {trafficLightData.map(dim => {
                                                             const tab = traitSubTabs[dim.id] || 'green';
-                                                            const items = [];
-                                                            for (let row = 0; row < 5; row++) {
-                                                                dim.subs.forEach(sub => items.push(sub[tab][row]));
-                                                            }
                                                             return (
                                                                 <div key={dim.id} className="border-2 p-4 rounded-xl bg-white shadow-sm">
                                                                     <div className="flex justify-between items-center mb-3 flex-wrap gap-1">
@@ -1712,29 +1708,29 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                             <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'red'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='red' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🔴 待改進</button>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="grid grid-cols-5 gap-1.5 mb-1">
-                                                                        {dim.subs.map((sub, ci) => (
-                                                                            <div key={ci} className={`text-center text-[10px] font-bold py-0.5 rounded-md transition-all select-none ${hoveredCols[dim.id] === ci ? 'text-indigo-700 bg-indigo-100' : 'text-slate-400'}`}>{sub.name}</div>
-                                                                        ))}
-                                                                    </div>
                                                                     <div className="grid grid-cols-5 gap-1.5">
-                                                                        {items.map((t, idx) => {
-                                                                            const colIdx = idx % 5;
-                                                                            const isSelected = traits[selectedStudentId]?.[dim.id]?.includes(t);
-                                                                            const isColHovered = hoveredCols[dim.id] === colIdx;
-                                                                            return (
-                                                                                <button key={`${dim.id}-${t}`}
-                                                                                    onClick={() => toggleTrait(selectedStudentId, dim.id, t)}
-                                                                                    onMouseEnter={() => setHoveredCols(prev => ({...prev, [dim.id]: colIdx}))}
-                                                                                    onMouseLeave={() => setHoveredCols(prev => ({...prev, [dim.id]: null}))}
-                                                                                    className={`py-1.5 px-1 text-xs font-bold rounded-lg border-2 transition-all text-center leading-tight ${
-                                                                                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md hover:bg-indigo-700'
-                                                                                        : isColHovered ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                                                                                        : 'bg-white border-slate-200 text-slate-700'
-                                                                                    }`}
-                                                                                >{t}</button>
-                                                                            );
-                                                                        })}
+                                                                        {dim.subs.map((sub, ci) => (
+                                                                            <div key={ci} className="flex flex-col gap-1.5"
+                                                                                onMouseEnter={() => setHoveredCols(prev => ({...prev, [dim.id]: ci}))}
+                                                                                onMouseLeave={() => setHoveredCols(prev => ({...prev, [dim.id]: null}))}
+                                                                            >
+                                                                                <div className={`text-center text-[10px] font-bold py-0.5 rounded-md transition-all select-none ${hoveredCols[dim.id] === ci ? 'text-indigo-700 bg-indigo-100' : 'text-slate-400'}`}>{sub.name}</div>
+                                                                                {(sub[tab] || []).map(t => {
+                                                                                    const isSelected = traits[selectedStudentId]?.[dim.id]?.includes(t);
+                                                                                    const isColHovered = hoveredCols[dim.id] === ci;
+                                                                                    return (
+                                                                                        <button key={t}
+                                                                                            onClick={() => toggleTrait(selectedStudentId, dim.id, t)}
+                                                                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg border-2 transition-all text-center leading-tight ${
+                                                                                                isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md hover:bg-indigo-700'
+                                                                                                : isColHovered ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                                                                                : 'bg-white border-slate-200 text-slate-700'
+                                                                                            }`}
+                                                                                        >{t}</button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
                                                             );
