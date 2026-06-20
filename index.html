@@ -847,17 +847,19 @@
                 trafficLightData.forEach(dim => {
                     const kws = s[dim.id] || [];
                     if (!kws.length) return;
-                    const g = [], y = [], r = [];
+                    const subLines = [];
                     dim.subs.forEach(sub => {
-                        sub.green.forEach(k => { if (kws.includes(k)) g.push(k); });
-                        sub.yellow.forEach(k => { if (kws.includes(k)) y.push(k); });
-                        sub.red.forEach(k => { if (kws.includes(k)) r.push(k); });
+                        const g = sub.green.filter(k => kws.includes(k));
+                        const y = sub.yellow.filter(k => kws.includes(k));
+                        const r = sub.red.filter(k => kws.includes(k));
+                        if (!g.length && !y.length && !r.length) return;
+                        const parts = [];
+                        if (g.length) parts.push(`🟢${g.join('、')}`);
+                        if (y.length) parts.push(`🟡${y.join('、')}`);
+                        if (r.length) parts.push(`🔴${r.join('、')}`);
+                        subLines.push(`  ${sub.name}：${parts.join('　')}`);
                     });
-                    const parts = [];
-                    if (g.length) parts.push(`🟢值得肯定：${g.join('、')}`);
-                    if (y.length) parts.push(`🟡表現中等：${y.join('、')}`);
-                    if (r.length) parts.push(`🔴待改進：${r.join('、')}`);
-                    if (parts.length) lines.push(`【${dim.name}】${parts.join('　')}`);
+                    if (subLines.length) lines.push(`【${dim.name}】\n${subLines.join('\n')}`);
                 });
                 return lines.join('\n');
             };
@@ -1769,21 +1771,26 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                     <span className="text-base font-bold text-indigo-700">已選特質：</span>
                                                                     <button onClick={() => clearStudentTraits(selectedStudentId)} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold text-sm transition-all">清除重選</button>
                                                                 </div>
-                                                                <div className="space-y-2">
+                                                                <div className="space-y-3">
                                                                     {dims.map(dim => {
                                                                         const kws = s[dim.id] || [];
-                                                                        const g = [], y = [], r = [];
-                                                                        dim.subs.forEach(sub => {
-                                                                            sub.green.forEach(k => { if (kws.includes(k)) g.push(k); });
-                                                                            sub.yellow.forEach(k => { if (kws.includes(k)) y.push(k); });
-                                                                            sub.red.forEach(k => { if (kws.includes(k)) r.push(k); });
-                                                                        });
+                                                                        const activeSubs = dim.subs.map(sub => ({
+                                                                            name: sub.name,
+                                                                            g: sub.green.filter(k => kws.includes(k)),
+                                                                            y: sub.yellow.filter(k => kws.includes(k)),
+                                                                            r: sub.red.filter(k => kws.includes(k)),
+                                                                        })).filter(sub => sub.g.length || sub.y.length || sub.r.length);
                                                                         return (
-                                                                            <div key={dim.id} className="flex items-start gap-2 flex-wrap">
-                                                                                <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded border border-indigo-300 whitespace-nowrap mt-0.5">【{dim.name}】</span>
-                                                                                {g.map((t,i) => <span key={'g'+i} className="px-3 py-1 text-sm font-bold bg-green-500 text-white rounded-lg shadow-sm">{t}</span>)}
-                                                                                {y.map((t,i) => <span key={'y'+i} className="px-3 py-1 text-sm font-bold bg-yellow-400 text-slate-800 rounded-lg shadow-sm">{t}</span>)}
-                                                                                {r.map((t,i) => <span key={'r'+i} className="px-3 py-1 text-sm font-bold bg-red-500 text-white rounded-lg shadow-sm">{t}</span>)}
+                                                                            <div key={dim.id} className="space-y-1">
+                                                                                <div className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded border border-indigo-300 inline-block">【{dim.name}】</div>
+                                                                                {activeSubs.map((sub, si) => (
+                                                                                    <div key={si} className="flex items-center gap-1.5 flex-wrap pl-3">
+                                                                                        <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{sub.name}：</span>
+                                                                                        {sub.g.map((t,i) => <span key={'g'+i} className="px-2.5 py-1 text-sm font-bold bg-green-500 text-white rounded-lg shadow-sm">{t}</span>)}
+                                                                                        {sub.y.map((t,i) => <span key={'y'+i} className="px-2.5 py-1 text-sm font-bold bg-yellow-400 text-slate-800 rounded-lg shadow-sm">{t}</span>)}
+                                                                                        {sub.r.map((t,i) => <span key={'r'+i} className="px-2.5 py-1 text-sm font-bold bg-red-500 text-white rounded-lg shadow-sm">{t}</span>)}
+                                                                                    </div>
+                                                                                ))}
                                                                             </div>
                                                                         );
                                                                     })}
