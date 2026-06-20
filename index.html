@@ -847,7 +847,7 @@
                 trafficLightData.forEach(dim => {
                     const kws = s[dim.id] || [];
                     if (!kws.length) return;
-                    const subLines = [];
+                    const subParts = [];
                     dim.subs.forEach(sub => {
                         const g = sub.green.filter(k => kws.includes(k));
                         const y = sub.yellow.filter(k => kws.includes(k));
@@ -857,9 +857,9 @@
                         if (g.length) parts.push(`🟢${g.join('、')}`);
                         if (y.length) parts.push(`🟡${y.join('、')}`);
                         if (r.length) parts.push(`🔴${r.join('、')}`);
-                        subLines.push(`  ${sub.name}：${parts.join('　')}`);
+                        subParts.push(`${sub.name}：${parts.join(' ')}`);
                     });
-                    if (subLines.length) lines.push(`【${dim.name}】\n${subLines.join('\n')}`);
+                    if (subParts.length) lines.push(`【${dim.name}】${subParts.join('　')}`);
                 });
                 return lines.join('\n');
             };
@@ -1109,7 +1109,7 @@
                         .replace(/(姓名[：:])[ \t]*(?=\n|$)/gm,
                             `$1${student.name}${student.title ? ` (${student.title})` : ''}`)
                         .replace(/(性格特質[：:])[ \t]*(?=\n|$)/gm,
-                            `$1${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}`);
+                            `$1${traitContext ? '\n' + traitContext : (finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記')}`);
 
                     // 找到期中/期末分界，分別替換 [科目] 行
                     const midIdx = result.search(/\(1\)[^\n]*期中/);
@@ -1144,9 +1144,6 @@
                     if (!finData) {
                         result = result.trimEnd() + '\n\n⚠️ 重要：本次只有期中成績，沒有期末成績資料。撰寫評語時請勿假設、推測或提及期末考的表現，只根據期中成績描述。';
                     }
-                    if (traitContext) {
-                        result += `\n\n📊 學生觀察向度（紅綠燈評估，請據此描述，勿逐字複製）：\n${traitContext}`;
-                    }
                     if (narrativeLines.length > 0) {
                         result += `\n\n📝 敘事觀察（供 AI 撰寫時參考，勿逐字複製）：\n${narrativeLines.join('\n')}`;
                     }
@@ -1167,7 +1164,7 @@
 
 【學生背景】
 座號：${student.id}　姓名：${student.name} ${student.title ? `(${student.title})` : ''}
-性格特質：${finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記'}${traitContext ? `\n\n📊 觀察向度（紅綠燈評估）：\n${traitContext}` : ''}${narrativeLines.length > 0 ? `\n\n📝 敘事觀察：\n${narrativeLines.join('\n')}` : ''}${counselNote ? `\n\n📋 輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
+性格特質：${traitContext || (finalTraits.length > 0 ? finalTraits.join('、') : '尚未標記')}${narrativeLines.length > 0 ? `\n\n📝 敘事觀察：\n${narrativeLines.join('\n')}` : ''}${counselNote ? `\n\n📋 輔導備注（請作為背景參考，勿直接引述）：${counselNote}` : ''}
 
 【學業成就分析 (含自動計算之全班分項排名)】
 ※ 格式：分數 (第X名) 表示該學生在該分項的表現位階。
