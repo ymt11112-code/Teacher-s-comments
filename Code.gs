@@ -78,14 +78,8 @@ function doGet(e) {
         result = { ok:true };
       }
       else if (action === 'getTraitData') result = { ok:true, data: getTraitData(ss) };
-      else if (action === 'saveTraitRow') {
-        saveTraitRow(ss,
-          e.parameter.dimId,   e.parameter.dimName,
-          e.parameter.subId,   e.parameter.subName,
-          b64Dec(e.parameter.green  || ''),
-          b64Dec(e.parameter.yellow || ''),
-          b64Dec(e.parameter.red    || '')
-        );
+      else if (action === 'saveAllTraitData') {
+        saveAllTraitData(ss, JSON.parse(b64Dec(e.parameter.data || '[]')));
         result = { ok:true };
       }
       else result = { ok:false, error:'未知的 action' };
@@ -307,21 +301,20 @@ function getTraitData(ss) {
   }));
 }
 
-// ── 寫入 / 更新個人特質庫單列 ─────────────────────────────
-function saveTraitRow(ss, dimId, dimName, subId, subName, green, yellow, red) {
+// ── 整張特質表一次清除重寫（避免 GAS 自動轉型導致比對失敗）──
+function saveAllTraitData(ss, rows) {
   let sheet = ss.getSheetByName('個人特質');
   if (!sheet) {
     sheet = ss.insertSheet('個人特質');
-    sheet.appendRow(['向度id', '向度name', '子項目id', '子項目name', 'green', 'yellow', 'red']);
     sheet.setFrozenRows(1);
     sheet.setColumnWidths(5, 3, 300);
+  } else {
+    sheet.clearContents();
   }
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][2].toString() === subId.toString()) {
-      sheet.getRange(i + 1, 1, 1, 7).setValues([[dimId, dimName, subId, subName, green, yellow, red]]);
-      return;
-    }
-  }
-  sheet.appendRow([dimId, dimName, subId, subName, green, yellow, red]);
+  var header = [['向度id','向度name','子項目id','子項目name','green','yellow','red']];
+  var data = rows.map(function(r) {
+    return [r.dimId, r.dimName, r.subId, r.subName, r.green, r.yellow, r.red];
+  });
+  var all = header.concat(data);
+  sheet.getRange(1, 1, all.length, 7).setValues(all);
 }

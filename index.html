@@ -738,42 +738,38 @@
                 finally { setTraitDataLoading(false); }
             };
 
-            // --- 特質庫：儲存一個向度的所有子項目回 GAS ---
+            // --- 特質庫：儲存一個向度（整張表一次清除重寫）---
             const saveTraitDim = async (dim) => {
                 setTraitDataLoading(true);
                 try {
-                    for (const sub of dim.subs) {
-                        const d = editDraft[sub.id] || {};
-                        const name   = d.name   ?? sub.name;
-                        const green  = d.green   ?? sub.green.join(',');
-                        const yellow = d.yellow  ?? sub.yellow.join(',');
-                        const red    = d.red     ?? sub.red.join(',');
-                        const params = new URLSearchParams({
-                            action:'saveTraitRow', sheetUrl,
-                            dimId:dim.id, dimName:dim.name, subId:sub.id, subName:name,
-                            green:b64Enc(green), yellow:b64Enc(yellow), red:b64Enc(red),
-                        });
-                        const res = await fetch(`${gasUrl}?${params}`);
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        const json = await res.json();
-                        if (!json.ok) throw new Error(json.error || '未知錯誤');
-                    }
-                    // 全部成功後才更新 local state
                     const parse = s => s.split(',').map(x=>x.trim()).filter(Boolean);
-                    setLoadedTraitData(prev => {
-                        const base = prev || defaultTrafficLightData;
-                        return base.map(d => {
-                            if (d.id !== dim.id) return d;
-                            return { ...d, subs: d.subs.map(s => {
-                                const dr = editDraft[s.id];
-                                if (!dr) return s;
-                                return { id:s.id, name:dr.name??s.name,
-                                    green:  dr.green  !== undefined ? parse(dr.green)  : s.green,
-                                    yellow: dr.yellow !== undefined ? parse(dr.yellow) : s.yellow,
-                                    red:    dr.red    !== undefined ? parse(dr.red)    : s.red };
-                            })};
-                        });
+                    // 先把本次修改合進完整 trafficLightData
+                    const updatedData = trafficLightData.map(d => {
+                        if (d.id !== dim.id) return d;
+                        return { ...d, subs: d.subs.map(s => {
+                            const dr = editDraft[s.id];
+                            if (!dr) return s;
+                            return { id:s.id, name: dr.name ?? s.name,
+                                green:  dr.green  !== undefined ? parse(dr.green)  : s.green,
+                                yellow: dr.yellow !== undefined ? parse(dr.yellow) : s.yellow,
+                                red:    dr.red    !== undefined ? parse(dr.red)    : s.red };
+                        })};
                     });
+                    // 攤平成 25 列發送
+                    const rows = updatedData.flatMap(d => d.subs.map(s => ({
+                        dimId:d.id, dimName:d.name, subId:s.id, subName:s.name,
+                        green:s.green.join(','), yellow:s.yellow.join(','), red:s.red.join(',')
+                    })));
+                    const params = new URLSearchParams({
+                        action:'saveAllTraitData', sheetUrl,
+                        data: b64Enc(JSON.stringify(rows))
+                    });
+                    const res = await fetch(`${gasUrl}?${params}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const json = await res.json();
+                    if (!json.ok) throw new Error(json.error || '未知錯誤');
+                    // 成功後更新 local state
+                    setLoadedTraitData(updatedData);
                     setEditingDim(null);
                     setEditDraft({});
                     setTraitSaveToast({ ok:true, msg:'已成功儲存至試算表' });
