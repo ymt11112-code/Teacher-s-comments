@@ -77,6 +77,17 @@ function doGet(e) {
         );
         result = { ok:true };
       }
+      else if (action === 'getTraitData') result = { ok:true, data: getTraitData(ss) };
+      else if (action === 'saveTraitRow') {
+        saveTraitRow(ss,
+          e.parameter.dimId,   e.parameter.dimName,
+          e.parameter.subId,   e.parameter.subName,
+          b64Dec(e.parameter.green  || ''),
+          b64Dec(e.parameter.yellow || ''),
+          b64Dec(e.parameter.red    || '')
+        );
+        result = { ok:true };
+      }
       else result = { ok:false, error:'未知的 action' };
     }
   } catch(err) {
@@ -278,4 +289,39 @@ function saveFinalComment(ss, studentId, finalComment) {
   }
   // 若尚無此學生列，先建立
   sheet.appendRow([studentId, '', '', '', '', '', finalComment]);
+}
+
+// ── 讀取個人特質庫（個人特質工作表，25 列）──────────────────
+function getTraitData(ss) {
+  const sheet = ss.getSheetByName('個人特質');
+  if (!sheet || sheet.getLastRow() <= 1) return null;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  return rows.map(r => ({
+    dimId:   r[0].toString(),
+    dimName: r[1].toString(),
+    subId:   r[2].toString(),
+    subName: r[3].toString(),
+    green:   r[4].toString().split(',').map(s => s.trim()).filter(Boolean),
+    yellow:  r[5].toString().split(',').map(s => s.trim()).filter(Boolean),
+    red:     r[6].toString().split(',').map(s => s.trim()).filter(Boolean),
+  }));
+}
+
+// ── 寫入 / 更新個人特質庫單列 ─────────────────────────────
+function saveTraitRow(ss, dimId, dimName, subId, subName, green, yellow, red) {
+  let sheet = ss.getSheetByName('個人特質');
+  if (!sheet) {
+    sheet = ss.insertSheet('個人特質');
+    sheet.appendRow(['向度id', '向度name', '子項目id', '子項目name', 'green', 'yellow', 'red']);
+    sheet.setFrozenRows(1);
+    sheet.setColumnWidths(5, 3, 300);
+  }
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2].toString() === subId.toString()) {
+      sheet.getRange(i + 1, 1, 1, 7).setValues([[dimId, dimName, subId, subName, green, yellow, red]]);
+      return;
+    }
+  }
+  sheet.appendRow([dimId, dimName, subId, subName, green, yellow, red]);
 }
