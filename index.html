@@ -755,17 +755,20 @@
                                 red:    dr.red    !== undefined ? parse(dr.red)    : s.red };
                         })};
                     });
-                    // 攤平成 25 列發送
-                    const rows = updatedData.flatMap(d => d.subs.map(s => ({
-                        dimId:d.id, dimName:d.name, subId:s.id, subName:s.name,
-                        green:s.green.join(','), yellow:s.yellow.join(','), red:s.red.join(',')
-                    })));
-                    const url = `${gasUrl}?action=saveAllTraitData&sheetUrl=${encodeURIComponent(sheetUrl)}`;
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-                        body: b64Enc(JSON.stringify(rows))
+                    // 只送本次修改的向度 5 列（GET 請求，避免 POST CORS 問題）
+                    const dimIndex = (loadedTraitData || defaultTrafficLightData).findIndex(d => d.id === dim.id);
+                    const updatedDim = updatedData.find(d => d.id === dim.id);
+                    const rows5 = updatedDim.subs.map(s => ({
+                        dimId: updatedDim.id, dimName: updatedDim.name,
+                        subId: s.id, subName: s.name,
+                        green: s.green.join(','), yellow: s.yellow.join(','), red: s.red.join(',')
+                    }));
+                    const params = new URLSearchParams({
+                        action: 'saveTraitDim', sheetUrl,
+                        dimIndex: String(dimIndex),
+                        data: b64Enc(JSON.stringify(rows5))
                     });
+                    const res = await fetch(`${gasUrl}?${params}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const json = await res.json();
                     if (!json.ok) throw new Error(json.error || '未知錯誤');

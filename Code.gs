@@ -34,27 +34,6 @@ const CMT = { id:0, name:1, gen1:2, gen2:3, gen3:4, timestamp:5, final:6 };
 
 // =================================================
 
-// ── POST：大資料（特質庫）走 POST body，避免 URL 超長 ──────
-function doPost(e) {
-  const action   = e.parameter.action   || '';
-  const sheetUrl = e.parameter.sheetUrl || '';
-  let result;
-  try {
-    const ss = resolveSpreadsheet(sheetUrl);
-    if (action === 'saveAllTraitData') {
-      var rows = JSON.parse(b64Dec((e.postData && e.postData.contents) || '[]'));
-      saveAllTraitData(ss, rows);
-      result = { ok: true };
-    } else {
-      result = { ok: false, error: '未知的 POST action' };
-    }
-  } catch(err) {
-    result = { ok: false, error: err.toString() };
-  }
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
 
 function doGet(e) {
   const action   = e.parameter.action   || '';
@@ -100,6 +79,13 @@ function doGet(e) {
         result = { ok:true };
       }
       else if (action === 'getTraitData') result = { ok:true, data: getTraitData(ss) };
+      else if (action === 'saveTraitDim') {
+        saveTraitDimByIndex(ss,
+          parseInt(e.parameter.dimIndex || '0'),
+          JSON.parse(b64Dec(e.parameter.data || '[]'))
+        );
+        result = { ok:true };
+      }
       else result = { ok:false, error:'未知的 action' };
     }
   } catch(err) {
@@ -319,20 +305,32 @@ function getTraitData(ss) {
   }));
 }
 
-// ── 整張特質表一次清除重寫（避免 GAS 自動轉型導致比對失敗）──
-function saveAllTraitData(ss, rows) {
-  let sheet = ss.getSheetByName('個人特質');
+// ── 用列號直接更新一個向度的 5 列（不需比對 subId，避免 GAS 型別轉型問題）──
+function saveTraitDimByIndex(ss, dimIndex, rows) {
+  var sheet = ss.getSheetByName('個人特質');
   if (!sheet) {
     sheet = ss.insertSheet('個人特質');
     sheet.setFrozenRows(1);
     sheet.setColumnWidths(5, 3, 300);
-  } else {
-    sheet.clearContents();
   }
-  var header = [['向度id','向度name','子項目id','子項目name','green','yellow','red']];
-  var data = rows.map(function(r) {
+
+  var startRow = dimIndex * 5 + 2; // 1-indexed，第 0 向度從第 2 列開始
+  var endRow   = startRow + 4;
+
+  // 若目前列數不足，先補空列
+  while (sheet.getLastRow() < endRow) {
+    sheet.appendRow(['', '', '', '', '', '', '']);
+  }
+
+  // 確保第一列是欄標題
+  if (sheet.getRange(1, 1).getValue() === '') {
+    sheet.getRange(1, 1, 1, 7).setValues(
+      [['向度id', '向度name', '子項目id', '子項目name', 'green', 'yellow', 'red']]
+    );
+  }
+
+  var values = rows.map(function(r) {
     return [r.dimId, r.dimName, r.subId, r.subName, r.green, r.yellow, r.red];
   });
-  var all = header.concat(data);
-  sheet.getRange(1, 1, all.length, 7).setValues(all);
+  sheet.getRange(startRow, 1, 5, 7).setValues(values);
 }
