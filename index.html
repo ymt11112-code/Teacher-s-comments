@@ -121,6 +121,7 @@
             const [traitDataLoading, setTraitDataLoading]   = useState(false);
             const [editingDim, setEditingDim]               = useState(null);
             const [editDraft, setEditDraft]                 = useState({});
+            const [traitSaveToast, setTraitSaveToast]       = useState(null);
 
             // --- 頁面載入時若已有網址，自動連線 ---
             useEffect(() => {
@@ -775,7 +776,13 @@
                     });
                     setEditingDim(null);
                     setEditDraft({});
-                } catch(e) { console.error('saveTraitDim', e); alert('儲存失敗：' + e.message); }
+                    setTraitSaveToast({ ok:true, msg:'已成功儲存至試算表' });
+                    setTimeout(() => setTraitSaveToast(null), 3000);
+                } catch(e) {
+                    console.error('saveTraitDim', e);
+                    setTraitSaveToast({ ok:false, msg:'儲存失敗：' + e.message });
+                    setTimeout(() => setTraitSaveToast(null), 6000);
+                }
                 finally { setTraitDataLoading(false); }
             };
 
@@ -1783,84 +1790,42 @@ ${scoreLines}${noFinalNote}`.trim();
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {trafficLightData.map(dim => {
                                                             const tab = traitSubTabs[dim.id] || 'green';
-                                                            const isEditing = editingDim === dim.id;
                                                             return (
-                                                                <div key={dim.id} className={`border-2 p-4 rounded-xl bg-white shadow-sm ${isEditing ? 'border-amber-400' : ''}`}>
-                                                                    {/* 卡片標題列 */}
+                                                                <div key={dim.id} className="border-2 p-4 rounded-xl bg-white shadow-sm">
                                                                     <div className="flex justify-between items-center mb-3 flex-wrap gap-1">
                                                                         <span className="text-sm font-bold text-slate-700">{dim.id}. {dim.name}</span>
                                                                         <div className="flex gap-1 items-center">
-                                                                            {!isEditing && <>
-                                                                                <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'green'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='green' ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🟢 值得肯定</button>
-                                                                                <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'yellow'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='yellow' ? 'bg-yellow-400 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🟡 表現中等</button>
-                                                                                <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'red'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='red' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🔴 待改進</button>
-                                                                            </>}
-                                                                            <button
-                                                                                onClick={() => { if (isEditing) { setEditingDim(null); setEditDraft({}); } else { setEditingDim(dim.id); setEditDraft({}); } }}
-                                                                                className={`px-2 py-1 text-xs font-bold rounded-lg border transition-all ${isEditing ? 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300' : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'}`}
-                                                                            >{isEditing ? '✕ 取消' : '✏️ 編輯'}</button>
+                                                                            <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'green'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='green' ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🟢 值得肯定</button>
+                                                                            <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'yellow'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='yellow' ? 'bg-yellow-400 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🟡 表現中等</button>
+                                                                            <button onClick={() => setTraitSubTabs(p => ({...p, [dim.id]:'red'}))} className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${tab==='red' ? 'bg-red-500 text-white shadow-md' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🔴 待改進</button>
+                                                                            <button onClick={() => { setEditingDim(dim.id); setEditDraft({}); }}
+                                                                                className="px-2 py-1 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all">✏️ 編輯</button>
                                                                         </div>
                                                                     </div>
-
-                                                                    {isEditing ? (
-                                                                        /* ── 編輯模式 ── */
-                                                                        <div className="space-y-2">
-                                                                            <p className="text-[10px] text-slate-400">各欄以逗號分隔關鍵字，子項目名稱可直接修改。</p>
-                                                                            {dim.subs.map(sub => {
-                                                                                const dr = editDraft[sub.id] || {};
-                                                                                const setF = (f, v) => setEditDraft(p => ({...p, [sub.id]:{...(p[sub.id]||{}), [f]:v}}));
-                                                                                return (
-                                                                                    <div key={sub.id} className="bg-slate-50 rounded-lg p-2 border border-slate-200 space-y-1">
-                                                                                        <input value={dr.name ?? sub.name} onChange={e => setF('name', e.target.value)}
-                                                                                            className="w-full text-xs font-bold border border-slate-300 rounded px-2 py-1 bg-white" placeholder="子項目名稱" />
-                                                                                        <div className="grid grid-cols-3 gap-1">
-                                                                                            {[['green','🟢 值得肯定'],['yellow','🟡 表現中等'],['red','🔴 待改進']].map(([color, label]) => (
-                                                                                                <div key={color}>
-                                                                                                    <div className="text-[9px] text-slate-500 mb-0.5 font-bold">{label}</div>
-                                                                                                    <textarea
-                                                                                                        value={dr[color] ?? sub[color].join(',')}
-                                                                                                        onChange={e => setF(color, e.target.value)}
-                                                                                                        className="w-full text-xs border border-slate-300 rounded px-1 py-0.5 resize-none bg-white"
-                                                                                                        rows={3}
-                                                                                                    />
-                                                                                                </div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                            <button onClick={() => saveTraitDim(dim)} disabled={traitDataLoading}
-                                                                                className="w-full py-2 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 disabled:opacity-50 transition-all">
-                                                                                {traitDataLoading ? '儲存中…' : '💾 儲存至試算表'}
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        /* ── 正常格子模式 ── */
-                                                                        <div className="grid grid-cols-5 gap-1.5">
-                                                                            {dim.subs.map((sub, ci) => (
-                                                                                <div key={ci} className="flex flex-col gap-1.5"
-                                                                                    onMouseEnter={() => setHoveredCols(prev => ({...prev, [dim.id]: ci}))}
-                                                                                    onMouseLeave={() => setHoveredCols(prev => ({...prev, [dim.id]: null}))}
-                                                                                >
-                                                                                    <div className={`text-center text-[10px] font-bold py-0.5 rounded-md transition-all select-none ${hoveredCols[dim.id] === ci ? 'text-indigo-700 bg-indigo-100' : 'text-slate-400'}`}>{sub.name}</div>
-                                                                                    {(sub[tab] || []).map(t => {
-                                                                                        const isSelected = traits[selectedStudentId]?.[dim.id]?.includes(t);
-                                                                                        const isColHovered = hoveredCols[dim.id] === ci;
-                                                                                        return (
-                                                                                            <button key={t}
-                                                                                                onClick={() => toggleTrait(selectedStudentId, dim.id, t)}
-                                                                                                className={`py-1.5 px-1 text-xs font-bold rounded-lg border-2 transition-all text-center leading-tight ${
-                                                                                                    isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md hover:bg-indigo-700'
-                                                                                                    : isColHovered ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                                                                                                    : 'bg-white border-slate-200 text-slate-700'
-                                                                                                }`}
-                                                                                            >{t}</button>
-                                                                                        );
-                                                                                    })}
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="grid grid-cols-5 gap-1.5">
+                                                                        {dim.subs.map((sub, ci) => (
+                                                                            <div key={ci} className="flex flex-col gap-1.5"
+                                                                                onMouseEnter={() => setHoveredCols(prev => ({...prev, [dim.id]: ci}))}
+                                                                                onMouseLeave={() => setHoveredCols(prev => ({...prev, [dim.id]: null}))}
+                                                                            >
+                                                                                <div className={`text-center text-[10px] font-bold py-0.5 rounded-md transition-all select-none ${hoveredCols[dim.id] === ci ? 'text-indigo-700 bg-indigo-100' : 'text-slate-400'}`}>{sub.name}</div>
+                                                                                {(sub[tab] || []).map(t => {
+                                                                                    const isSelected = traits[selectedStudentId]?.[dim.id]?.includes(t);
+                                                                                    const isColHovered = hoveredCols[dim.id] === ci;
+                                                                                    return (
+                                                                                        <button key={t}
+                                                                                            onClick={() => toggleTrait(selectedStudentId, dim.id, t)}
+                                                                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg border-2 transition-all text-center leading-tight ${
+                                                                                                isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md hover:bg-indigo-700'
+                                                                                                : isColHovered ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                                                                                : 'bg-white border-slate-200 text-slate-700'
+                                                                                            }`}
+                                                                                        >{t}</button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}
@@ -2293,6 +2258,70 @@ ${scoreLines}${noFinalNote}`.trim();
 
                         </div>
                     </div>
+
+                    {/* ── 特質編輯 Modal ── */}
+                    {editingDim && (() => {
+                        const dim = trafficLightData.find(d => d.id === editingDim);
+                        if (!dim) return null;
+                        return (
+                            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) { setEditingDim(null); setEditDraft({}); } }}>
+                                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                                    {/* Modal 標題 */}
+                                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                                        <h2 className="text-base font-bold text-slate-800">✏️ 編輯特質向度：{dim.id}. {dim.name}</h2>
+                                        <button onClick={() => { setEditingDim(null); setEditDraft({}); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-lg leading-none">✕</button>
+                                    </div>
+                                    {/* Modal 內容（可捲動） */}
+                                    <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+                                        <p className="text-xs text-slate-400">各顏色欄以逗號分隔關鍵字；子項目名稱可直接修改。</p>
+                                        {dim.subs.map(sub => {
+                                            const dr = editDraft[sub.id] || {};
+                                            const setF = (f, v) => setEditDraft(p => ({...p, [sub.id]:{...(p[sub.id]||{}), [f]:v}}));
+                                            return (
+                                                <div key={sub.id} className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+                                                    <input value={dr.name ?? sub.name} onChange={e => setF('name', e.target.value)}
+                                                        className="w-full text-sm font-bold border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                                        placeholder="子項目名稱" />
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {[['green','🟢 值得肯定'],['yellow','🟡 表現中等'],['red','🔴 待改進']].map(([color, label]) => (
+                                                            <div key={color}>
+                                                                <div className="text-xs font-bold text-slate-500 mb-1">{label}</div>
+                                                                <textarea
+                                                                    value={dr[color] ?? sub[color].join(',')}
+                                                                    onChange={e => setF(color, e.target.value)}
+                                                                    className="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 resize-none bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 leading-relaxed"
+                                                                    rows={4}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Modal 底部按鈕 */}
+                                    <div className="flex gap-3 px-6 py-4 border-t border-slate-200">
+                                        <button onClick={() => saveTraitDim(dim)} disabled={traitDataLoading}
+                                            className="flex-1 py-2.5 bg-green-500 text-white text-sm font-bold rounded-xl hover:bg-green-600 disabled:opacity-50 transition-all shadow-sm">
+                                            {traitDataLoading ? '儲存中…' : '💾 儲存至試算表'}
+                                        </button>
+                                        <button onClick={() => { setEditingDim(null); setEditDraft({}); }}
+                                            className="px-6 py-2.5 bg-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-300 transition-all">
+                                            取消
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* ── 儲存結果 Toast ── */}
+                    {traitSaveToast && (
+                        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-xl shadow-xl text-sm font-bold text-white pointer-events-none transition-all ${traitSaveToast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
+                            {traitSaveToast.ok ? '✅ ' : '❌ '}{traitSaveToast.msg}
+                        </div>
+                    )}
+
                 </div>
             );
         };
