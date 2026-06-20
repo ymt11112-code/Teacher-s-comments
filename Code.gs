@@ -299,9 +299,9 @@ function getTraitData(ss) {
     dimName: r[1].toString(),
     subId:   r[2].toString(),
     subName: r[3].toString(),
-    green:   r[4].toString().split(',').map(s => s.trim()).filter(Boolean),
-    yellow:  r[5].toString().split(',').map(s => s.trim()).filter(Boolean),
-    red:     r[6].toString().split(',').map(s => s.trim()).filter(Boolean),
+    green:   r[4].toString().split(/[,、]/).map(s => s.trim()).filter(Boolean),
+    yellow:  r[5].toString().split(/[,、]/).map(s => s.trim()).filter(Boolean),
+    red:     r[6].toString().split(/[,、]/).map(s => s.trim()).filter(Boolean),
   }));
 }
 

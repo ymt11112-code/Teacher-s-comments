@@ -742,7 +742,7 @@
             const saveTraitDim = async (dim) => {
                 setTraitDataLoading(true);
                 try {
-                    const parse = s => s.split(',').map(x=>x.trim()).filter(Boolean);
+                    const parse = s => s.split(/[\n、,]/).map(x=>x.trim()).filter(Boolean);
                     // 先把本次修改合進完整 trafficLightData
                     const updatedData = trafficLightData.map(d => {
                         if (d.id !== dim.id) return d;
@@ -761,7 +761,7 @@
                     const rows5 = updatedDim.subs.map(s => ({
                         dimId: updatedDim.id, dimName: updatedDim.name,
                         subId: s.id, subName: s.name,
-                        green: s.green.join(','), yellow: s.yellow.join(','), red: s.red.join(',')
+                        green: s.green.join('、'), yellow: s.yellow.join('、'), red: s.red.join('、')
                     }));
                     const params = new URLSearchParams({
                         action: 'saveTraitDim', sheetUrl,
@@ -2273,7 +2273,7 @@ ${scoreLines}${noFinalNote}`.trim();
                                     </div>
                                     {/* Modal 內容（可捲動） */}
                                     <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
-                                        <p className="text-xs text-slate-400">各顏色欄以逗號分隔關鍵字；子項目名稱可直接修改。</p>
+                                        <p className="text-xs text-slate-400">每行輸入一個關鍵字；子項目名稱可直接修改。</p>
                                         {dim.subs.map(sub => {
                                             const dr = editDraft[sub.id] || {};
                                             const setF = (f, v) => setEditDraft(p => ({...p, [sub.id]:{...(p[sub.id]||{}), [f]:v}}));
@@ -2287,10 +2287,10 @@ ${scoreLines}${noFinalNote}`.trim();
                                                             <div key={color}>
                                                                 <div className="text-xs font-bold text-slate-500 mb-1">{label}</div>
                                                                 <textarea
-                                                                    value={dr[color] ?? sub[color].join(',')}
+                                                                    value={dr[color] ?? sub[color].join('\n')}
                                                                     onChange={e => setF(color, e.target.value)}
                                                                     className="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5 resize-none bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 leading-relaxed"
-                                                                    rows={4}
+                                                                    rows={6}
                                                                 />
                                                             </div>
                                                         ))}
