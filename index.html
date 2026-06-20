@@ -760,11 +760,12 @@
                         dimId:d.id, dimName:d.name, subId:s.id, subName:s.name,
                         green:s.green.join(','), yellow:s.yellow.join(','), red:s.red.join(',')
                     })));
-                    const params = new URLSearchParams({
-                        action:'saveAllTraitData', sheetUrl,
-                        data: b64Enc(JSON.stringify(rows))
+                    const url = `${gasUrl}?action=saveAllTraitData&sheetUrl=${encodeURIComponent(sheetUrl)}`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                        body: b64Enc(JSON.stringify(rows))
                     });
-                    const res = await fetch(`${gasUrl}?${params}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const json = await res.json();
                     if (!json.ok) throw new Error(json.error || '未知錯誤');

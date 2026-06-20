@@ -34,6 +34,28 @@ const CMT = { id:0, name:1, gen1:2, gen2:3, gen3:4, timestamp:5, final:6 };
 
 // =================================================
 
+// ── POST：大資料（特質庫）走 POST body，避免 URL 超長 ──────
+function doPost(e) {
+  const action   = e.parameter.action   || '';
+  const sheetUrl = e.parameter.sheetUrl || '';
+  let result;
+  try {
+    const ss = resolveSpreadsheet(sheetUrl);
+    if (action === 'saveAllTraitData') {
+      var rows = JSON.parse(b64Dec((e.postData && e.postData.contents) || '[]'));
+      saveAllTraitData(ss, rows);
+      result = { ok: true };
+    } else {
+      result = { ok: false, error: '未知的 POST action' };
+    }
+  } catch(err) {
+    result = { ok: false, error: err.toString() };
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
   const action   = e.parameter.action   || '';
   const sheetUrl = e.parameter.sheetUrl || '';
@@ -78,10 +100,6 @@ function doGet(e) {
         result = { ok:true };
       }
       else if (action === 'getTraitData') result = { ok:true, data: getTraitData(ss) };
-      else if (action === 'saveAllTraitData') {
-        saveAllTraitData(ss, JSON.parse(b64Dec(e.parameter.data || '[]')));
-        result = { ok:true };
-      }
       else result = { ok:false, error:'未知的 action' };
     }
   } catch(err) {
