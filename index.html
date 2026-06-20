@@ -752,9 +752,12 @@
                             dimId:dim.id, dimName:dim.name, subId:sub.id, subName:name,
                             green:b64Enc(green), yellow:b64Enc(yellow), red:b64Enc(red),
                         });
-                        await fetch(`${gasUrl}?${params}`);
+                        const res = await fetch(`${gasUrl}?${params}`);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const json = await res.json();
+                        if (!json.ok) throw new Error(json.error || '未知錯誤');
                     }
-                    // 更新本地 state
+                    // 全部成功後才更新 local state
                     const parse = s => s.split(',').map(x=>x.trim()).filter(Boolean);
                     setLoadedTraitData(prev => {
                         const base = prev || defaultTrafficLightData;
