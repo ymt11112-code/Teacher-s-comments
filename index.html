@@ -727,9 +727,10 @@
                     const json = await res.json();
                     if (json.ok && json.data) {
                         const dimMap = {}, dimOrder = [];
+                        const splitKw = arr => arr.flatMap(s => s.split(/[、,]/).map(x=>x.trim()).filter(Boolean));
                         json.data.forEach(row => {
                             if (!dimMap[row.dimId]) { dimMap[row.dimId] = { id:row.dimId, name:row.dimName, subs:[] }; dimOrder.push(row.dimId); }
-                            dimMap[row.dimId].subs.push({ id:row.subId, name:row.subName, green:row.green, yellow:row.yellow, red:row.red });
+                            dimMap[row.dimId].subs.push({ id:row.subId, name:row.subName, green:splitKw(row.green), yellow:splitKw(row.yellow), red:splitKw(row.red) });
                         });
                         setLoadedTraitData(dimOrder.map(id => dimMap[id]));
                     }
