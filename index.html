@@ -329,32 +329,34 @@
 
             // --- 解析 Gemini 輸出成三則（含引言）---
             const parseThreeComments = (text) => {
-                if (!text) return { preamble:'', gen1:'', gen2:'', gen3:'' };
-                // 去掉 Gemini 有時加的 **學生姓名：** 和分隔線
+                if (!text) return { preamble:'', gen1:'', gen2:'', gen3:'', sub1:'', sub2:'', sub3:'' };
                 const strip = (s) => (s||'').replace(/\*{0,2}學生姓名[：:][^\n]*\*{0,2}\n?/g,'').replace(/^[-\s]*\n/m,'').trim();
+                // 清除每則評語 body 裡的 (副標題)、### 標題、--- 分隔線
+                const cleanBody = (s) => (s||'')
+                    .replace(/^\s*[（(][^）)\n]{1,80}[）)]\s*\n?/, '')
+                    .replace(/^#{1,3}[^\n]*\n?/gm, '')
+                    .replace(/^[-*]{3,}\s*$/gm, '')
+                    .trim();
+                // 從 【評語X：subtitle】 標題提取副標題
+                const stRe = /【評語\s*[1-3一二三]([^】]*)】/g;
+                const stAll = [...text.matchAll(stRe)];
+                const getSub = (m) => m ? m[1].replace(/^[：:]\s*/, '').trim() : '';
+                const sub1 = getSub(stAll[0]), sub2 = getSub(stAll[1]), sub3 = getSub(stAll[2]);
+                const pack = (pre, p1, p2, p3) => ({ preamble:pre, gen1:cleanBody(p1), gen2:cleanBody(p2), gen3:cleanBody(p3), sub1, sub2, sub3 });
                 let parts;
-                // 第X則評語 format（最常見）
                 parts = text.split(/\n?\s*\*{0,2}第[一二三]則評語[：:]\*{0,2}\s*\n?/);
-                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
-                // 評語一／則一 format
+                if (parts.length >= 4) return pack(strip(parts[0]), parts[1], parts[2], parts[3]);
                 parts = text.split(/\n?\s*\*{0,2}(?:評語|則)[一二三][：:]?\*{0,2}\s*\n?/);
-                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
-                // 【評語 1】 / 【評語1：副標題】 format
+                if (parts.length >= 4) return pack(strip(parts[0]), parts[1], parts[2], parts[3]);
                 parts = text.split(/\n?\s*\*{0,2}【評語\s*[1-3一二三][^】]*】\*{0,2}\s*\n?/);
-                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
-                // **N. 學生名** bold numbered header (with or without --- separators)
+                if (parts.length >= 4) return pack(strip(parts[0]), parts[1], parts[2], parts[3]);
                 parts = text.split(/\n\s*(?:---+\s*\n\s*)?\*\*[1-3][.．、。]\s*[^\n]*\*\*\s*\n?/);
-                if (parts.length >= 4) {
-                    const cleanEnd = s => (s||'').replace(/\s*---+\s*$/, '').trim();
-                    return { preamble:strip(parts[0]), gen1:cleanEnd(parts[1]), gen2:cleanEnd(parts[2]), gen3:cleanEnd(parts[3]) };
-                }
-                // 阿拉伯數字
+                if (parts.length >= 4) return pack(strip(parts[0]), (parts[1]||'').replace(/\s*---+\s*$/,''), (parts[2]||'').replace(/\s*---+\s*$/,''), (parts[3]||'').replace(/\s*---+\s*$/,''));
                 parts = text.split(/\n\s*[（(]?[1-3][）).、]\s*/);
-                if (parts.length >= 4) return { preamble:strip(parts[0]), gen1:parts[1]?.trim()||'', gen2:parts[2]?.trim()||'', gen3:parts[3]?.trim()||'' };
-                // 段落
+                if (parts.length >= 4) return pack(strip(parts[0]), parts[1], parts[2], parts[3]);
                 const paras = text.trim().split(/\n{2,}/).filter(p=>p.trim());
-                if (paras.length >= 3) return { preamble:'', gen1:paras[0]?.trim()||'', gen2:paras[1]?.trim()||'', gen3:paras[2]?.trim()||'' };
-                return { preamble:'', gen1:text.trim(), gen2:'', gen3:'' };
+                if (paras.length >= 3) return { preamble:'', gen1:cleanBody(paras[0]), gen2:cleanBody(paras[1]), gen3:cleanBody(paras[2]), sub1, sub2, sub3 };
+                return { preamble:'', gen1:cleanBody(text), gen2:'', gen3:'', sub1, sub2, sub3 };
             };
 
             const saveCommentToSheet = async (studentId, rawComment) => {
@@ -2218,7 +2220,12 @@ ${scoreLines}${noFinalNote}`.trim();
                                                     return (
                                                         <div key={n} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                                             <div className="flex justify-between items-center mb-2">
-                                                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">生成評語 {n}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">生成評語 {n}</span>
+                                                                    {parsedGenComments[currentStudent.id]?.[`sub${n}`] && (
+                                                                        <span className="text-xs text-indigo-500 font-medium">（{parsedGenComments[currentStudent.id][`sub${n}`]}）</span>
+                                                                    )}
+                                                                </div>
                                                                 <div className="flex gap-2">
                                                                     <button onClick={() => copyToClipboard(text)} className="px-3 py-1 bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100 text-xs font-bold transition-all">複製</button>
                                                                     <button onClick={() => handleFinalCommentChange(currentStudent.id, text)} className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-bold transition-all">套用為正式</button>
