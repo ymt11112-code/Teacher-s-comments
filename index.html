@@ -123,6 +123,7 @@
             const [editingDim, setEditingDim]               = useState(null);
             const [editDraft, setEditDraft]                 = useState({});
             const [traitSaveToast, setTraitSaveToast]       = useState(null);
+            const [editingOverview, setEditingOverview]     = useState(null);
 
             // --- 頁面載入時若已有網址，自動連線 ---
             useEffect(() => {
@@ -2315,20 +2316,52 @@ ${scoreLines}${noFinalNote}`.trim();
                                         ) : (
                                             <div className="space-y-4 max-w-3xl">
                                                 {students.map(s => {
-                                                    const comment = finalComments[s.id]?.trim() || '';
+                                                    const comment = finalComments[s.id] || '';
+                                                    const isEditing = editingOverview === s.id;
+                                                    const status = saveStatus[s.id];
                                                     return (
-                                                        <div key={s.id} className={`rounded-xl border-2 p-5 ${comment ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                                                        <div key={s.id} className={`rounded-xl border-2 p-5 transition-all ${isEditing ? 'bg-indigo-50 border-indigo-300 shadow-sm' : comment.trim() ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <span className="font-bold text-slate-700 text-base">
                                                                     {s.id}. {s.name}
-                                                                    {!comment && <span className="ml-2 text-xs font-normal text-slate-400">（尚未填寫）</span>}
+                                                                    {!comment.trim() && !isEditing && <span className="ml-2 text-xs font-normal text-slate-400">（尚未填寫）</span>}
                                                                 </span>
-                                                                {comment && (
-                                                                    <button onClick={() => copyToClipboard(comment)} className="text-xs px-3 py-1 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 font-medium transition-all">複製</button>
-                                                                )}
+                                                                <div className="flex items-center gap-2">
+                                                                    {isEditing && (
+                                                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                                            status === 'saving'  ? 'bg-amber-100 text-amber-600' :
+                                                                            status === 'saved'   ? 'bg-green-100 text-green-600' :
+                                                                            status === 'error'   ? 'bg-red-100 text-red-600' :
+                                                                            status === 'pending' ? 'bg-slate-100 text-slate-400' : ''
+                                                                        }`}>
+                                                                            {status === 'saving'  ? '儲存中...' :
+                                                                             status === 'saved'   ? '✓ 已儲存' :
+                                                                             status === 'error'   ? '✗ 失敗' :
+                                                                             status === 'pending' ? '未儲存' : ''}
+                                                                        </span>
+                                                                    )}
+                                                                    {!isEditing && comment.trim() && (
+                                                                        <button onClick={() => copyToClipboard(comment.trim())} className="text-xs px-3 py-1 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 font-medium transition-all">複製</button>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => setEditingOverview(isEditing ? null : s.id)}
+                                                                        className={`text-xs px-3 py-1 rounded-lg font-bold transition-all ${isEditing ? 'bg-slate-200 text-slate-600 hover:bg-slate-300' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}
+                                                                    >
+                                                                        {isEditing ? '完成' : '✏️ 編輯'}
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            {comment ? (
-                                                                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{comment}</p>
+                                                            {isEditing ? (
+                                                                <textarea
+                                                                    value={comment}
+                                                                    onChange={e => handleFinalCommentChange(s.id, e.target.value)}
+                                                                    className="w-full p-3 rounded-lg border border-indigo-300 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-indigo-400 bg-white transition-all"
+                                                                    style={{minHeight: 120}}
+                                                                    placeholder={gasUrl ? '輸入後 1.5 秒自動儲存至試算表...' : '（請先連結 Google Sheets 才能自動儲存）'}
+                                                                    autoFocus
+                                                                />
+                                                            ) : comment.trim() ? (
+                                                                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.trim()}</p>
                                                             ) : (
                                                                 <p className="text-sm text-slate-300 italic">—</p>
                                                             )}
