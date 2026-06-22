@@ -44,6 +44,7 @@
         const ClipboardCheck = (props) => <Icon {...props}>✅</Icon>;
         const PlusCircle = (props) => <Icon {...props}>➕</Icon>;
         const Settings = (props) => <Icon {...props}>⚙️</Icon>;
+        const ListOrdered = (props) => <Icon {...props}>📋</Icon>;
 
         const App = () => {
             // --- 全域狀態 ---
@@ -1329,7 +1330,8 @@ ${scoreLines}${noFinalNote}`.trim();
                                     { id: 'scores', icon: BarChart3, label: '成績匯入' },
                                     { id: 'traits', icon: UserCircle, label: '特質挑選' },
                                     { id: 'prompt', icon: MessageSquare, label: '生成指令' },
-                                    { id: 'review', icon: ClipboardCheck, label: '評語審閱' }
+                                    { id: 'review', icon: ClipboardCheck, label: '評語審閱' },
+                                    { id: 'overview', icon: ListOrdered, label: '全班總覽' }
                                 ].map(tab => (
                                     <button
                                         key={tab.id}
@@ -2282,6 +2284,62 @@ ${scoreLines}${noFinalNote}`.trim();
                                     </div>
                                 </div>
                             )}
+
+                            {/* 頁面：全班總覽 */}
+                            {activeTab === 'overview' && (() => {
+                                const hasFinal = students.some(s => finalComments[s.id]?.trim());
+                                const copyAll = () => {
+                                    const lines = students
+                                        .filter(s => finalComments[s.id]?.trim())
+                                        .map(s => `${s.id}. ${s.name}\n${finalComments[s.id].trim()}`)
+                                        .join('\n\n');
+                                    copyToClipboard(lines);
+                                };
+                                return (
+                                    <div className="p-8 animate-in fade-in h-full overflow-y-auto">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h2 className="text-xl font-bold border-l-4 border-indigo-500 pl-3 text-slate-700">
+                                                全班正式評語總覽
+                                                <span className="ml-3 text-sm font-normal text-slate-400">
+                                                    （{students.filter(s => finalComments[s.id]?.trim()).length} / {students.length} 人已完成）
+                                                </span>
+                                            </h2>
+                                            {hasFinal && (
+                                                <button onClick={copyAll} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm transition-all">
+                                                    <Copy size={16} /> 複製全班評語
+                                                </button>
+                                            )}
+                                        </div>
+                                        {students.length === 0 ? (
+                                            <div className="text-center text-slate-400 py-20">尚未建立學生名單</div>
+                                        ) : (
+                                            <div className="space-y-4 max-w-3xl">
+                                                {students.map(s => {
+                                                    const comment = finalComments[s.id]?.trim() || '';
+                                                    return (
+                                                        <div key={s.id} className={`rounded-xl border-2 p-5 ${comment ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="font-bold text-slate-700 text-base">
+                                                                    {s.id}. {s.name}
+                                                                    {!comment && <span className="ml-2 text-xs font-normal text-slate-400">（尚未填寫）</span>}
+                                                                </span>
+                                                                {comment && (
+                                                                    <button onClick={() => copyToClipboard(comment)} className="text-xs px-3 py-1 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 font-medium transition-all">複製</button>
+                                                                )}
+                                                            </div>
+                                                            {comment ? (
+                                                                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{comment}</p>
+                                                            ) : (
+                                                                <p className="text-sm text-slate-300 italic">—</p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                         </div>
                     </div>
