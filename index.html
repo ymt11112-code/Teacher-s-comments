@@ -1824,6 +1824,13 @@ ${scoreLines}${noFinalNote}`.trim();
                                                             const cell = (avg, rank) => avg
                                                                 ? <>{avg}{rank ? <span className="text-slate-400 ml-0.5">（{rank}）</span> : ''}</>
                                                                 : <span className="text-slate-300">—</span>;
+                                                            const trend = (mid, fin) => {
+                                                                const m = parseFloat(mid), f = parseFloat(fin);
+                                                                if (isNaN(m) || isNaN(f)) return null;
+                                                                if (f > m) return <span style={{color:'#dc2626', fontWeight:'bold'}}>↑</span>;
+                                                                if (f < m) return <span style={{color:'#2563eb', fontWeight:'bold'}}>↓</span>;
+                                                                return <span style={{color:'#ca8a04', fontWeight:'bold'}}>—</span>;
+                                                            };
                                                             const left  = rows.filter(r => r.sub === '國語' || r.sub === '數學');
                                                             const right = rows.filter(r => r.sub === '社會' || r.sub === '自然');
                                                             const maxR  = Math.max(left.length, right.length);
@@ -1834,9 +1841,11 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                             <th className="px-2 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
                                                                             <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期中</th>
                                                                             <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期末</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">趨勢</th>
                                                                             <th className="px-2 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
                                                                             <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期中</th>
-                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-slate-200">期末</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期末</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-slate-200">趨勢</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -1846,10 +1855,12 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                                                                                     <td className="px-2 py-1.5 font-bold text-slate-700 border-r border-slate-100">{l?.sub || ''}</td>
                                                                                     <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{l ? cell(l.midAvg, l.midRank) : ''}</td>
-                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200">{l ? cell(l.finAvg, l.finRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{l ? cell(l.finAvg, l.finRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center border-r border-slate-200">{l ? trend(l.midAvg, l.finAvg) : ''}</td>
                                                                                     <td className="px-2 py-1.5 font-bold text-slate-700 border-r border-slate-100">{r2?.sub || ''}</td>
                                                                                     <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{r2 ? cell(r2.midAvg, r2.midRank) : ''}</td>
-                                                                                    <td className="px-2 py-1.5 text-center text-slate-700">{r2 ? cell(r2.finAvg, r2.finRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{r2 ? cell(r2.finAvg, r2.finRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center">{r2 ? trend(r2.midAvg, r2.finAvg) : ''}</td>
                                                                                 </tr>
                                                                             );
                                                                         })}
