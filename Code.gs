@@ -24,9 +24,9 @@ const MA_MID = { attitude:2, textbookAvg:3, workbookAvg:4, hw:5, heavyAvg:6, she
 // 數學 —— 期末
 const MA_FIN = { attitude:13, textbookAvg:14, workbookAvg:15, hw:16, heavyAvg:17, sheetAvg:18, paperQuiz:19, daily:20, exam:21, avg:22, rank:23 };
 
-// 社會 / 自然 —— 期中 (C~D = index 2~3)
-const SI_MID = { daily:2, exam:3 };
-// 社會 / 自然 —— 期末 (G~H = index 6~7，E,F 為期中平均/排名)
+// 社會 / 自然 —— 期中 (C~F = index 2~5)
+const SI_MID = { daily:2, exam:3, avg:4, rank:5 };
+// 社會 / 自然 —— 期末 (G~H = index 6~7，無平均/排名欄)
 const SI_FIN = { daily:6, exam:7 };
 
 // 評語工作表：A=座號 B=姓名 C=生成評語1 D=生成評語2 E=生成評語3 F=時間 G=正式評語
@@ -139,8 +139,8 @@ function getScores(ss) {
     ['attitude','workbook','note','hw','dictation','sheet','quiz','daily','exam','avg','rank']);
   readSubject(ss, SHEET_NAMES.Math, all, '數學', MA_MID, MA_FIN,
     ['attitude','textbookAvg','workbookAvg','hw','heavyAvg','sheetAvg','paperQuiz','daily','exam','avg','rank']);
-  readSubject(ss, SHEET_NAMES.Society, all, '社會', SI_MID, SI_FIN, ['daily','exam']);
-  readSubject(ss, SHEET_NAMES.Science, all, '自然', SI_MID, SI_FIN, ['daily','exam']);
+  readSubject(ss, SHEET_NAMES.Society, all, '社會', SI_MID, SI_FIN, ['daily','exam','avg','rank']);
+  readSubject(ss, SHEET_NAMES.Science, all, '自然', SI_MID, SI_FIN, ['daily','exam','avg','rank']);
   return all;
 }
 

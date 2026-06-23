@@ -1817,8 +1817,8 @@ ${scoreLines}${noFinalNote}`.trim();
                                                             const rows = [
                                                                 { sub:'國語', midAvg: sd.midterm?.['國語']?.avg, midRank: sd.midterm?.['國語']?.rank, finAvg: sd.final?.['國語']?.avg, finRank: sd.final?.['國語']?.rank },
                                                                 { sub:'數學', midAvg: sd.midterm?.['數學']?.avg, midRank: sd.midterm?.['數學']?.rank, finAvg: sd.final?.['數學']?.avg, finRank: sd.final?.['數學']?.rank },
-                                                                { sub:'社會', midAvg: sd.midterm?.['社會']?.exam, midRank: null, finAvg: sd.final?.['社會']?.exam, finRank: null },
-                                                                { sub:'自然', midAvg: sd.midterm?.['自然']?.exam, midRank: null, finAvg: sd.final?.['自然']?.exam, finRank: null },
+                                                                { sub:'社會', midAvg: sd.midterm?.['社會']?.avg || sd.midterm?.['社會']?.exam, midRank: sd.midterm?.['社會']?.rank, finAvg: sd.final?.['社會']?.exam, finRank: null, midExam: sd.midterm?.['社會']?.exam, finExam: sd.final?.['社會']?.exam },
+                                                                { sub:'自然', midAvg: sd.midterm?.['自然']?.avg || sd.midterm?.['自然']?.exam, midRank: sd.midterm?.['自然']?.rank, finAvg: sd.final?.['自然']?.exam, finRank: null, midExam: sd.midterm?.['自然']?.exam, finExam: sd.final?.['自然']?.exam },
                                                             ].filter(r => r.midAvg || r.finAvg);
                                                             if (!rows.length) return null;
                                                             const cell = (avg, rank) => avg
@@ -1860,7 +1860,7 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                                     <td className="px-2 py-1.5 font-bold text-slate-700 border-r border-slate-100">{r2?.sub || ''}</td>
                                                                                     <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{r2 ? cell(r2.midAvg, r2.midRank) : ''}</td>
                                                                                     <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{r2 ? cell(r2.finAvg, r2.finRank) : ''}</td>
-                                                                                    <td className="px-2 py-1.5 text-center">{r2 ? trend(r2.midAvg, r2.finAvg) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center">{r2 ? trend(r2.midExam ?? r2.midAvg, r2.finExam ?? r2.finAvg) : ''}</td>
                                                                                 </tr>
                                                                             );
                                                                         })}
