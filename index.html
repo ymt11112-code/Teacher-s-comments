@@ -1824,23 +1824,35 @@ ${scoreLines}${noFinalNote}`.trim();
                                                             const cell = (avg, rank) => avg
                                                                 ? <>{avg}{rank ? <span className="text-slate-400 ml-0.5">（{rank}）</span> : ''}</>
                                                                 : <span className="text-slate-300">—</span>;
+                                                            const left  = rows.filter(r => r.sub === '國語' || r.sub === '數學');
+                                                            const right = rows.filter(r => r.sub === '社會' || r.sub === '自然');
+                                                            const maxR  = Math.max(left.length, right.length);
                                                             return (
                                                                 <table className="text-xs border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
                                                                     <thead>
                                                                         <tr className="bg-slate-50 text-slate-500">
-                                                                            <th className="px-3 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
-                                                                            <th className="px-3 py-1.5 text-center font-bold border-b border-r border-slate-200">期中（名次）</th>
-                                                                            <th className="px-3 py-1.5 text-center font-bold border-b border-slate-200">期末（名次）</th>
+                                                                            <th className="px-2 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期中</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期末</th>
+                                                                            <th className="px-2 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-r border-slate-200">期中</th>
+                                                                            <th className="px-2 py-1.5 text-center font-bold border-b border-slate-200">期末</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {rows.map((r, i) => (
-                                                                            <tr key={r.sub} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                                                                                <td className="px-3 py-1.5 font-bold text-slate-700 border-r border-slate-100">{r.sub}</td>
-                                                                                <td className="px-3 py-1.5 text-center text-slate-700 border-r border-slate-100">{cell(r.midAvg, r.midRank)}</td>
-                                                                                <td className="px-3 py-1.5 text-center text-slate-700">{cell(r.finAvg, r.finRank)}</td>
-                                                                            </tr>
-                                                                        ))}
+                                                                        {Array.from({length: maxR}).map((_, i) => {
+                                                                            const l = left[i], r2 = right[i];
+                                                                            return (
+                                                                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                                                                                    <td className="px-2 py-1.5 font-bold text-slate-700 border-r border-slate-100">{l?.sub || ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{l ? cell(l.midAvg, l.midRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200">{l ? cell(l.finAvg, l.finRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 font-bold text-slate-700 border-r border-slate-100">{r2?.sub || ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-100">{r2 ? cell(r2.midAvg, r2.midRank) : ''}</td>
+                                                                                    <td className="px-2 py-1.5 text-center text-slate-700">{r2 ? cell(r2.finAvg, r2.finRank) : ''}</td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
                                                                     </tbody>
                                                                 </table>
                                                             );
