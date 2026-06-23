@@ -1801,14 +1801,50 @@ ${scoreLines}${noFinalNote}`.trim();
                                                         ) : null;
                                                     })()}
 
-                                                    {/* 特質庫工具列 */}
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <button onClick={loadTraitData} disabled={traitDataLoading || !gasUrl || !sheetUrl}
-                                                            className="px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 transition-all">
-                                                            {traitDataLoading ? '載入中…' : '🔄 讀取特質'}
-                                                        </button>
-                                                        {traitDataLoaded && <span className="text-xs text-green-600 font-bold">✓ 已從試算表載入</span>}
-                                                        {!traitDataLoaded && !traitDataLoading && <span className="text-xs text-slate-400">（使用預設特質庫）</span>}
+                                                    {/* 特質庫工具列 + 成績速覽 */}
+                                                    <div className="flex items-start gap-4 flex-wrap">
+                                                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                                                            <button onClick={loadTraitData} disabled={traitDataLoading || !gasUrl || !sheetUrl}
+                                                                className="px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 transition-all">
+                                                                {traitDataLoading ? '載入中…' : '🔄 讀取特質'}
+                                                            </button>
+                                                            {traitDataLoaded && <span className="text-xs text-green-600 font-bold">✓ 已從試算表載入</span>}
+                                                            {!traitDataLoaded && !traitDataLoading && <span className="text-xs text-slate-400">（使用預設特質庫）</span>}
+                                                        </div>
+                                                        {/* 成績速覽表 */}
+                                                        {scoresLoaded && scores[selectedStudentId] && (() => {
+                                                            const sd = scores[selectedStudentId];
+                                                            const rows = [
+                                                                { sub:'國語', midAvg: sd.midterm?.['國語']?.avg, midRank: sd.midterm?.['國語']?.rank, finAvg: sd.final?.['國語']?.avg, finRank: sd.final?.['國語']?.rank },
+                                                                { sub:'數學', midAvg: sd.midterm?.['數學']?.avg, midRank: sd.midterm?.['數學']?.rank, finAvg: sd.final?.['數學']?.avg, finRank: sd.final?.['數學']?.rank },
+                                                                { sub:'社會', midAvg: sd.midterm?.['社會']?.exam, midRank: null, finAvg: sd.final?.['社會']?.exam, finRank: null },
+                                                                { sub:'自然', midAvg: sd.midterm?.['自然']?.exam, midRank: null, finAvg: sd.final?.['自然']?.exam, finRank: null },
+                                                            ].filter(r => r.midAvg || r.finAvg);
+                                                            if (!rows.length) return null;
+                                                            const cell = (avg, rank) => avg
+                                                                ? <>{avg}{rank ? <span className="text-slate-400 ml-0.5">（{rank}）</span> : ''}</>
+                                                                : <span className="text-slate-300">—</span>;
+                                                            return (
+                                                                <table className="text-xs border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                                                    <thead>
+                                                                        <tr className="bg-slate-50 text-slate-500">
+                                                                            <th className="px-3 py-1.5 text-left font-bold border-b border-r border-slate-200">科目</th>
+                                                                            <th className="px-3 py-1.5 text-center font-bold border-b border-r border-slate-200">期中（名次）</th>
+                                                                            <th className="px-3 py-1.5 text-center font-bold border-b border-slate-200">期末（名次）</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {rows.map((r, i) => (
+                                                                            <tr key={r.sub} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                                                                                <td className="px-3 py-1.5 font-bold text-slate-700 border-r border-slate-100">{r.sub}</td>
+                                                                                <td className="px-3 py-1.5 text-center text-slate-700 border-r border-slate-100">{cell(r.midAvg, r.midRank)}</td>
+                                                                                <td className="px-3 py-1.5 text-center text-slate-700">{cell(r.finAvg, r.finRank)}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            );
+                                                        })()}
                                                     </div>
 
                                                     {/* 五向度紅綠燈格子 */}
