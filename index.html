@@ -227,7 +227,7 @@
                         
                         const fields = sub === '國語' ? ['attitude', 'workbook', 'note', 'hw', 'dictation', 'sheet', 'quiz', 'daily', 'exam', 'avg'] :
                                        sub === '數學' ? ['attitude', 'textbookAvg', 'workbookAvg', 'hw', 'heavyAvg', 'sheetAvg', 'paperQuiz', 'daily', 'exam', 'avg'] :
-                                       ['daily', 'exam'];
+                                       ['daily', 'exam', 'avg'];
 
                         fields.forEach(field => {
                             const scoreList = students.map(s => {
@@ -1024,9 +1024,10 @@
                         {key:'daily',name:'平時成績'},{key:'exam',name:'月考'},
                     ], 'avg', 'rank');
                 } else {
-                    const dv = getVal('daily'), ev = getVal('exam');
-                    const dr = getRank('daily'), er = getRank('exam');
-                    return `[${subject}] 平時：${dv ?? '無'}(第${dr ?? '?'}名)，月考：${ev ?? '無'}(第${er ?? '?'}名)`;
+                    const dv = getVal('daily'), ev = getVal('exam'), av = getVal('avg'), rv = getVal('rank');
+                    const dr = getRank('daily'), er = getRank('exam'), ar = getRank('avg');
+                    const rankStr = rv || ar;
+                    return `[${subject}] 平時：${dv ?? '無'}(第${dr ?? '?'}名)，月考：${ev ?? '無'}(第${er ?? '?'}名)${av ? `，平均：${av}${rankStr ? `(第${rankStr}名)` : ''}` : ''}`;
                 }
             };
 
@@ -1573,12 +1574,12 @@ ${scoreLines}${noFinalNote}`.trim();
                                                                     ? ['attitude','workbook','note','hw','dictation','sheet','quiz','daily','exam','avg','rank']
                                                                     : currentScoreSubject === '數學'
                                                                     ? ['attitude','textbookAvg','workbookAvg','hw','heavyAvg','sheetAvg','paperQuiz','daily','exam','avg','rank']
-                                                                    : ['daily','exam'];
+                                                                    : ['daily','exam','avg','rank'];
                                                                 const headers = currentScoreSubject === '國語'
                                                                     ? ['態度','國習','筆記','作業','聽寫','考卷','平時測','平時','月考','平均','排名']
                                                                     : currentScoreSubject === '數學'
                                                                     ? ['態度','數課','數習','作業','數重','考卷','紙筆','平時','月考','平均','排名']
-                                                                    : ['平時成績','月考成績'];
+                                                                    : ['平時成績','月考成績','平均','排名'];
                                                                 const hasData = students.some(s => scores[s.id]?.[examPeriod]?.[currentScoreSubject]);
                                                                 if (!hasData) return (
                                                                     <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-xl border">
